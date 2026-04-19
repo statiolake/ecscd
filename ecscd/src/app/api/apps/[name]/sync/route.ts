@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { du } from "@/lib/di";
-import { GitTaskDefinitionError } from "@/lib/infrastructure/interface/github";
+import { GitTaskDefinitionError } from "@/lib/usecase/port/github";
 
 function formatGitError(error: GitTaskDefinitionError): string {
   switch (error.type) {

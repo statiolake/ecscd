@@ -143,6 +143,7 @@ export function EditApplicationDialog({ open, onOpenChange, application, onSucce
           awsConfig: {
             roleArn: formData.roleArn,
             region: formData.region,
+            externalId: formData.externalId,
           }
         }),
       });

@@ -140,7 +140,24 @@ export type UpdateApplicationDomainResult =
   | { ok: false; errors: ApplicationValidationError[] };
 
 const GITHUB_REPO_URL_PATTERN =
-  /^https?:\/\/github\.com\/[^/\s]+\/[^/\s.]+(?:\.git)?\/?$/;
+  /^https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/;
+
+export interface GitHubRepoLocation {
+  owner: string;
+  repo: string;
+}
+
+export function parseGitHubRepoUrl(url: string): GitHubRepoLocation | null {
+  const match = url.match(GITHUB_REPO_URL_PATTERN);
+  if (!match) {
+    return null;
+  }
+  return { owner: match[1], repo: match[2] };
+}
+
+export function isValidGitHubRepoUrl(url: string): boolean {
+  return parseGitHubRepoUrl(url) !== null;
+}
 
 function validateGitConfig(
   gitConfig: GitTaskDefinitionSource,
@@ -148,7 +165,7 @@ function validateGitConfig(
   const errors: ApplicationValidationError[] = [];
   if (!gitConfig.repo) {
     errors.push({ field: "git.repo", kind: "Empty" });
-  } else if (!GITHUB_REPO_URL_PATTERN.test(gitConfig.repo)) {
+  } else if (!isValidGitHubRepoUrl(gitConfig.repo)) {
     errors.push({ field: "git.repo", kind: "InvalidUrl" });
   }
   if (!gitConfig.branch) errors.push({ field: "git.branch", kind: "Empty" });

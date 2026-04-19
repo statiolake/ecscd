@@ -8,11 +8,11 @@ import {
 } from "../domain/application";
 import { desiredToComparable } from "../domain/task-definition";
 import { compareTaskDefinitions } from "../domain/task-definition-diff";
-import { IAws } from "../infrastructure/interface/aws";
+import { IAws } from "./port/aws";
 import {
   GitTaskDefinitionError,
   IGithub,
-} from "../infrastructure/interface/github";
+} from "./port/github";
 import { ApplicationObserver } from "../repository/application-observer";
 import { ServiceStateProvider } from "../repository/service-state-provider";
 

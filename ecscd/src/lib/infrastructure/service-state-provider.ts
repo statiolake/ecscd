@@ -5,7 +5,7 @@ import {
   ServiceDomain,
 } from "../domain/application";
 import { ServiceStateProvider } from "../repository/service-state-provider";
-import { IAws } from "./interface/aws";
+import { IAws } from "../usecase/port/aws";
 
 export class AwsServiceStateProvider implements ServiceStateProvider {
   constructor(private aws: IAws) {}

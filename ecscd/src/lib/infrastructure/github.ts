@@ -1,13 +1,13 @@
 import { Octokit } from "@octokit/rest";
-import { GitTaskDefinitionSource } from "../domain/application";
+import {
+  GitTaskDefinitionSource,
+  parseGitHubRepoUrl,
+} from "../domain/application";
 import {
   GitTaskDefinitionResult,
   IGithub,
-} from "./interface/github";
+} from "../usecase/port/github";
 import { toDesiredTaskDefinitionSpec } from "./task-definition-normalizer";
-
-const GITHUB_REPO_URL_REGEX =
-  /github\.com\/([^/\s]+)\/([^/\s.]+?)(?:\.git)?\/?$/;
 
 export class GitHub implements IGithub {
   private octokit: Octokit;
@@ -22,15 +22,14 @@ export class GitHub implements IGithub {
     source: GitTaskDefinitionSource
   ): Promise<GitTaskDefinitionResult> {
     const repoUrl = source.repo || "";
-    const match = repoUrl.match(GITHUB_REPO_URL_REGEX);
-    if (!match) {
+    const location = parseGitHubRepoUrl(repoUrl);
+    if (!location) {
       return {
         status: "Error",
         error: { type: "InvalidRepositoryUrl", url: repoUrl },
       };
     }
-    const owner = match[1];
-    const repo = match[2];
+    const { owner, repo } = location;
     const path = source.path || "";
     const branch = source.branch || "main";
 

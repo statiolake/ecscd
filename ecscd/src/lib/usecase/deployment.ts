@@ -1,8 +1,8 @@
-import { IAws } from "../infrastructure/interface/aws";
+import { IAws } from "./port/aws";
 import {
   GitTaskDefinitionError,
   IGithub,
-} from "../infrastructure/interface/github";
+} from "./port/github";
 import { ApplicationRepository } from "../repository/application";
 
 export interface SyncApplicationCommand {

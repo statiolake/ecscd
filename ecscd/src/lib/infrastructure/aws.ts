@@ -20,7 +20,7 @@ import {
   ComparableTaskDefinition,
   DesiredTaskDefinitionSpec,
 } from "../domain/task-definition";
-import { IAws } from "./interface/aws";
+import { IAws } from "../usecase/port/aws";
 import { toComparableTaskDefinition } from "./task-definition-normalizer";
 
 import {
