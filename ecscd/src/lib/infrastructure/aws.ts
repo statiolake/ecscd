@@ -167,9 +167,17 @@ export class AWS implements IAws {
     if (!response.taskDefinition) {
       return undefined;
     }
-    return toComparableTaskDefinition(
+    const validation = toComparableTaskDefinition(
       response.taskDefinition as unknown as Record<string, unknown>,
     );
+    if (!validation.ok) {
+      throw new Error(
+        `Current task definition ${taskDefinitionArn} failed validation: ${validation.errors
+          .map((e) => e.type)
+          .join(", ")}`,
+      );
+    }
+    return validation.spec;
   }
 
   async registerTaskDefinition(

@@ -34,6 +34,20 @@ export class GitHub implements IGithub {
     const path = source.path || "";
     const branch = source.branch || "main";
 
+    // repository の存在を先に確認することで、続く listCommits の 404 が
+    // 「branch 不在」であることを確定できる。
+    try {
+      await this.octokit.rest.repos.get({ owner, repo });
+    } catch (error) {
+      if (isOctokitStatus(error, 404)) {
+        return {
+          status: "Error",
+          error: { type: "RepositoryNotFound", owner, repo },
+        };
+      }
+      return toFetchError(error);
+    }
+
     let latestSha: string;
     try {
       const sha = await this.getLatestCommitSha(owner, repo, branch);

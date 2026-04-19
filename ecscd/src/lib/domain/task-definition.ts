@@ -36,9 +36,13 @@ export type ValidateDesiredResult =
   | { ok: true; spec: DesiredTaskDefinitionSpec }
   | { ok: false; errors: TaskDefinitionValidationError[] };
 
-export function validateDesired(
+export type ValidateComparableResult =
+  | { ok: true; spec: ComparableTaskDefinition }
+  | { ok: false; errors: TaskDefinitionValidationError[] };
+
+function collectTaskDefinitionErrors(
   fields: TaskDefinitionFields,
-): ValidateDesiredResult {
+): TaskDefinitionValidationError[] {
   const errors: TaskDefinitionValidationError[] = [];
   if (typeof fields.family !== "string" || !fields.family.trim()) {
     errors.push({ type: "MissingFamily" });
@@ -48,10 +52,27 @@ export function validateDesired(
   } else if (fields.containerDefinitions.length === 0) {
     errors.push({ type: "EmptyContainerDefinitions" });
   }
+  return errors;
+}
+
+export function validateDesired(
+  fields: TaskDefinitionFields,
+): ValidateDesiredResult {
+  const errors = collectTaskDefinitionErrors(fields);
   if (errors.length > 0) {
     return { ok: false, errors };
   }
   return { ok: true, spec: fields as DesiredTaskDefinitionSpec };
+}
+
+export function validateComparable(
+  fields: TaskDefinitionFields,
+): ValidateComparableResult {
+  const errors = collectTaskDefinitionErrors(fields);
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, spec: fields as ComparableTaskDefinition };
 }
 
 export function asComparable(

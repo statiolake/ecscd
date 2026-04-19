@@ -128,6 +128,11 @@ function toObservationFailure(
         type: "GitSourceUnavailable",
         detail: `Invalid GitHub repository URL: "${error.url}"`,
       };
+    case "RepositoryNotFound":
+      return {
+        type: "GitSourceUnavailable",
+        detail: `GitHub repository ${error.owner}/${error.repo} not found or not accessible.`,
+      };
     case "CommitNotFound":
       return {
         type: "GitSourceUnavailable",

@@ -3,6 +3,7 @@ import { DesiredTaskDefinitionSpec } from "../../domain/task-definition";
 
 export type GitTaskDefinitionError =
   | { type: "InvalidRepositoryUrl"; url: string }
+  | { type: "RepositoryNotFound"; owner: string; repo: string }
   | { type: "CommitNotFound"; branch: string }
   | { type: "FileNotFound"; path: string }
   | { type: "InvalidTaskDefinition"; reason: string }

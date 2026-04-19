@@ -1,8 +1,8 @@
 import {
-  asComparable,
-  ComparableTaskDefinition,
   TaskDefinitionFields,
+  ValidateComparableResult,
   ValidateDesiredResult,
+  validateComparable,
   validateDesired,
 } from "../domain/task-definition";
 
@@ -36,6 +36,6 @@ export function toDesiredTaskDefinitionSpec(
 
 export function toComparableTaskDefinition(
   raw: Record<string, unknown>,
-): ComparableTaskDefinition {
-  return asComparable(stripAwsGeneratedFields(raw));
+): ValidateComparableResult {
+  return validateComparable(stripAwsGeneratedFields(raw));
 }
