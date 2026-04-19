@@ -4,6 +4,10 @@ import {
   parseGitHubRepoUrl,
 } from "../domain/application";
 import {
+  TaskDefinitionValidationError,
+  validateDesired,
+} from "../domain/task-definition";
+import {
   GitTaskDefinitionResult,
   IGithub,
 } from "../usecase/port/github";
@@ -132,12 +136,40 @@ function parseTaskDefinition(content: string): GitTaskDefinitionResult {
     };
   }
 
+  const normalized = toDesiredTaskDefinitionSpec(
+    parsed as Record<string, unknown>,
+  );
+  const validation = validateDesired(normalized);
+  if (!validation.ok) {
+    return {
+      status: "Error",
+      error: {
+        type: "InvalidTaskDefinition",
+        reason: formatTaskDefinitionValidationErrors(validation.errors),
+      },
+    };
+  }
   return {
     status: "Success",
-    taskDefinition: toDesiredTaskDefinitionSpec(
-      parsed as Record<string, unknown>,
-    ),
+    taskDefinition: validation.spec,
   };
+}
+
+function formatTaskDefinitionValidationErrors(
+  errors: TaskDefinitionValidationError[],
+): string {
+  return errors
+    .map((error) => {
+      switch (error.type) {
+        case "MissingFamily":
+          return "missing required field 'family'";
+        case "MissingContainerDefinitions":
+          return "missing required field 'containerDefinitions'";
+        case "EmptyContainerDefinitions":
+          return "'containerDefinitions' must contain at least one container";
+      }
+    })
+    .join("; ");
 }
 
 function toFetchError(error: unknown): GitTaskDefinitionResult {

@@ -27,6 +27,33 @@ export type ComparableTaskDefinition = TaskDefinitionFields & {
   readonly __tag: "Comparable";
 };
 
+export type TaskDefinitionValidationError =
+  | { type: "MissingFamily" }
+  | { type: "MissingContainerDefinitions" }
+  | { type: "EmptyContainerDefinitions" };
+
+export type ValidateDesiredResult =
+  | { ok: true; spec: DesiredTaskDefinitionSpec }
+  | { ok: false; errors: TaskDefinitionValidationError[] };
+
+export function validateDesired(
+  fields: TaskDefinitionFields,
+): ValidateDesiredResult {
+  const errors: TaskDefinitionValidationError[] = [];
+  if (typeof fields.family !== "string" || !fields.family.trim()) {
+    errors.push({ type: "MissingFamily" });
+  }
+  if (!Array.isArray(fields.containerDefinitions)) {
+    errors.push({ type: "MissingContainerDefinitions" });
+  } else if (fields.containerDefinitions.length === 0) {
+    errors.push({ type: "EmptyContainerDefinitions" });
+  }
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
+  return { ok: true, spec: fields as DesiredTaskDefinitionSpec };
+}
+
 export function asDesired(
   fields: TaskDefinitionFields,
 ): DesiredTaskDefinitionSpec {

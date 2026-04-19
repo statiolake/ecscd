@@ -159,17 +159,25 @@ export function isValidGitHubRepoUrl(url: string): boolean {
   return parseGitHubRepoUrl(url) !== null;
 }
 
+function isBlank(value: string | undefined | null): boolean {
+  return !value || !value.trim();
+}
+
 function validateGitConfig(
   gitConfig: GitTaskDefinitionSource,
 ): ApplicationValidationError[] {
   const errors: ApplicationValidationError[] = [];
-  if (!gitConfig.repo) {
+  if (isBlank(gitConfig.repo)) {
     errors.push({ field: "git.repo", kind: "Empty" });
   } else if (!isValidGitHubRepoUrl(gitConfig.repo)) {
     errors.push({ field: "git.repo", kind: "InvalidUrl" });
   }
-  if (!gitConfig.branch) errors.push({ field: "git.branch", kind: "Empty" });
-  if (!gitConfig.path) errors.push({ field: "git.path", kind: "Empty" });
+  if (isBlank(gitConfig.branch)) {
+    errors.push({ field: "git.branch", kind: "Empty" });
+  }
+  if (isBlank(gitConfig.path)) {
+    errors.push({ field: "git.path", kind: "Empty" });
+  }
   return errors;
 }
 
@@ -177,8 +185,12 @@ function validateEcsConfig(
   ecsConfig: EcsServiceTarget,
 ): ApplicationValidationError[] {
   const errors: ApplicationValidationError[] = [];
-  if (!ecsConfig.cluster) errors.push({ field: "ecs.cluster", kind: "Empty" });
-  if (!ecsConfig.service) errors.push({ field: "ecs.service", kind: "Empty" });
+  if (isBlank(ecsConfig.cluster)) {
+    errors.push({ field: "ecs.cluster", kind: "Empty" });
+  }
+  if (isBlank(ecsConfig.service)) {
+    errors.push({ field: "ecs.service", kind: "Empty" });
+  }
   return errors;
 }
 
@@ -186,7 +198,7 @@ function validateAwsConfig(
   awsConfig: AwsAccessProfile,
 ): ApplicationValidationError[] {
   const errors: ApplicationValidationError[] = [];
-  if (!awsConfig.externalId) {
+  if (isBlank(awsConfig.externalId)) {
     errors.push({ field: "aws.externalId", kind: "Empty" });
   }
   return errors;
@@ -196,7 +208,7 @@ export function create(
   input: CreateApplicationInput,
 ): CreateApplicationDomainResult {
   const errors: ApplicationValidationError[] = [];
-  if (!input.name) {
+  if (isBlank(input.name)) {
     errors.push({ field: "name", kind: "Empty" });
   }
   errors.push(
