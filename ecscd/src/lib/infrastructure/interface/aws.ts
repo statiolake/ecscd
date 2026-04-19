@@ -1,10 +1,13 @@
 import { ApplicationDomain, ServiceDomain } from "../../domain/application";
-import { TaskDefinitionSpec } from "../../domain/task-definition";
+import {
+  ComparableTaskDefinition,
+  DesiredTaskDefinitionSpec,
+} from "../../domain/task-definition";
 
 export interface IAws {
   registerTaskDefinition(
     awsConfig: ApplicationDomain["awsConfig"],
-    taskDef: TaskDefinitionSpec
+    taskDef: DesiredTaskDefinitionSpec
   ): Promise<string>;
   updateService(
     awsConfig: ApplicationDomain["awsConfig"],
@@ -18,7 +21,7 @@ export interface IAws {
   describeTaskDefinition(
     awsConfig: ApplicationDomain["awsConfig"],
     taskDefinitionArn: string
-  ): Promise<TaskDefinitionSpec | undefined>;
+  ): Promise<ComparableTaskDefinition | undefined>;
   stopServiceDeployment(
     awsConfig: ApplicationDomain["awsConfig"],
     ecsConfig: ApplicationDomain["ecsConfig"]

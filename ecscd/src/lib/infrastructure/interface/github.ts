@@ -1,5 +1,5 @@
 import { GitTaskDefinitionSource } from "../../domain/application";
-import { TaskDefinitionSpec } from "../../domain/task-definition";
+import { DesiredTaskDefinitionSpec } from "../../domain/task-definition";
 
 export type GitTaskDefinitionError =
   | { type: "InvalidRepositoryUrl"; url: string }
@@ -9,7 +9,7 @@ export type GitTaskDefinitionError =
   | { type: "FetchFailed"; reason: string };
 
 export type GitTaskDefinitionResult =
-  | { status: "Success"; taskDefinition: TaskDefinitionSpec }
+  | { status: "Success"; taskDefinition: DesiredTaskDefinitionSpec }
   | { status: "Error"; error: GitTaskDefinitionError };
 
 export interface IGithub {

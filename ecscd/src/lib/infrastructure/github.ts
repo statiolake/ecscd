@@ -4,7 +4,7 @@ import {
   GitTaskDefinitionResult,
   IGithub,
 } from "./interface/github";
-import { toTaskDefinitionSpec } from "./task-definition-normalizer";
+import { toDesiredTaskDefinitionSpec } from "./task-definition-normalizer";
 
 export class GitHub implements IGithub {
   private octokit: Octokit;
@@ -120,7 +120,9 @@ function parseTaskDefinition(content: string): GitTaskDefinitionResult {
 
   return {
     status: "Success",
-    taskDefinition: toTaskDefinitionSpec(parsed as Record<string, unknown>),
+    taskDefinition: toDesiredTaskDefinitionSpec(
+      parsed as Record<string, unknown>,
+    ),
   };
 }
 

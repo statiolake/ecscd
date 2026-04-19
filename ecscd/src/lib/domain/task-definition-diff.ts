@@ -1,5 +1,5 @@
 import { DiffDomain } from "./application";
-import { TaskDefinitionSpec } from "./task-definition";
+import { ComparableTaskDefinition } from "./task-definition";
 
 /**
  * Recursively flatten an object/array into a Map with dot-notation paths.
@@ -231,8 +231,8 @@ function compareMaps(
 }
 
 export function compareTaskDefinitions(
-  current: TaskDefinitionSpec,
-  target: TaskDefinitionSpec,
+  current: ComparableTaskDefinition,
+  target: ComparableTaskDefinition,
 ): DiffDomain[] {
   return compareMaps(flattenToMap(current), flattenToMap(target));
 }

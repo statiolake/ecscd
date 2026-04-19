@@ -2,7 +2,11 @@ import { Deployment } from "../deployment";
 import { IAws } from "../interface/aws";
 import { IGithub } from "../interface/github";
 import { ApplicationDomain } from "../../domain/application";
-import { TaskDefinitionSpec } from "../../domain/task-definition";
+import {
+  asComparable,
+  asDesired,
+  TaskDefinitionFields,
+} from "../../domain/task-definition";
 import { compareTaskDefinitions } from "../../domain/task-definition-diff";
 
 function createTestApplication(): ApplicationDomain {
@@ -50,12 +54,12 @@ describe("Deployment", () => {
   });
 
   describe("task definition loading for diff", () => {
-    it("should generate diffs for all TaskDefinitionSpec fields when everything is different", async () => {
+    it("should generate diffs for all task definition fields when everything is different", async () => {
       // Test application
       const application = createTestApplication();
 
       // Current task definition (comprehensive with all possible fields)
-      const currentTaskDefinition: TaskDefinitionSpec = {
+      const currentTaskDefinition: TaskDefinitionFields = {
         family: "current-family",
         taskRoleArn: "arn:aws:iam::123456789012:role/current-task-role",
         executionRoleArn:
@@ -242,7 +246,7 @@ describe("Deployment", () => {
       };
 
       // Target task definition (different in all possible fields)
-      const targetTaskDefinition: TaskDefinitionSpec = {
+      const targetTaskDefinition: TaskDefinitionFields = {
         family: "target-family",
         taskRoleArn: "arn:aws:iam::123456789012:role/target-task-role",
         executionRoleArn:
@@ -437,10 +441,12 @@ describe("Deployment", () => {
       // Setup mocks
       mockGithub.getTaskDefinition.mockResolvedValue({
         status: "Success",
-        taskDefinition: targetTaskDefinition,
+        taskDefinition: asDesired(targetTaskDefinition),
       });
       mockAws.describeServices.mockResolvedValue(mockService as any);
-      mockAws.describeTaskDefinition.mockResolvedValue(currentTaskDefinition);
+      mockAws.describeTaskDefinition.mockResolvedValue(
+        asComparable(currentTaskDefinition)
+      );
 
       // Execute diff
       const taskDefinitions =
@@ -867,7 +873,7 @@ describe("Deployment", () => {
       const application = createTestApplication();
 
       // Current task definition with same structure as target but different values
-      const currentTaskDefinition: TaskDefinitionSpec = {
+      const currentTaskDefinition: TaskDefinitionFields = {
         family: "web-app",
         taskRoleArn: "arn:aws:iam::123456789012:role/web-task-role",
         executionRoleArn: "arn:aws:iam::123456789012:role/web-execution-role",
@@ -978,7 +984,7 @@ describe("Deployment", () => {
       };
 
       // Target task definition with same structure but all different values
-      const targetTaskDefinition: TaskDefinitionSpec = {
+      const targetTaskDefinition: TaskDefinitionFields = {
         family: "web-app-v2",
         taskRoleArn: "arn:aws:iam::123456789012:role/web-task-role-v2",
         executionRoleArn:
@@ -1098,10 +1104,12 @@ describe("Deployment", () => {
       // Setup mocks
       mockGithub.getTaskDefinition.mockResolvedValue({
         status: "Success",
-        taskDefinition: targetTaskDefinition,
+        taskDefinition: asDesired(targetTaskDefinition),
       });
       mockAws.describeServices.mockResolvedValue(mockService as any);
-      mockAws.describeTaskDefinition.mockResolvedValue(currentTaskDefinition);
+      mockAws.describeTaskDefinition.mockResolvedValue(
+        asComparable(currentTaskDefinition)
+      );
 
       // Execute diff
       const taskDefinitions =

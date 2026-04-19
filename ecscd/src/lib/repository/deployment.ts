@@ -1,9 +1,9 @@
 import { ApplicationDomain, ServiceDomain } from "../domain/application";
-import { TaskDefinitionSpec } from "../domain/task-definition";
+import { ComparableTaskDefinition } from "../domain/task-definition";
 
 export interface TaskDefinitionsForDiff {
-  current: TaskDefinitionSpec;
-  target: TaskDefinitionSpec;
+  current: ComparableTaskDefinition;
+  target: ComparableTaskDefinition;
 }
 
 export interface DeploymentRepository {

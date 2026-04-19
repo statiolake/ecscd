@@ -1,4 +1,10 @@
-import { TaskDefinitionSpec } from "../domain/task-definition";
+import {
+  asComparable,
+  asDesired,
+  ComparableTaskDefinition,
+  DesiredTaskDefinitionSpec,
+  TaskDefinitionFields,
+} from "../domain/task-definition";
 
 const AWS_GENERATED_TASK_DEFINITION_FIELDS = [
   "revision",
@@ -10,14 +16,26 @@ const AWS_GENERATED_TASK_DEFINITION_FIELDS = [
   "compatibilities",
 ] as const;
 
-export function toTaskDefinitionSpec(
-  taskDefinition: Record<string, unknown>,
-): TaskDefinitionSpec {
-  const spec: Record<string, unknown> = { ...taskDefinition };
+function stripAwsGeneratedFields(
+  raw: Record<string, unknown>,
+): TaskDefinitionFields {
+  const spec: Record<string, unknown> = { ...raw };
 
   for (const field of AWS_GENERATED_TASK_DEFINITION_FIELDS) {
     delete spec[field];
   }
 
-  return spec as TaskDefinitionSpec;
+  return spec as TaskDefinitionFields;
+}
+
+export function toDesiredTaskDefinitionSpec(
+  raw: Record<string, unknown>,
+): DesiredTaskDefinitionSpec {
+  return asDesired(stripAwsGeneratedFields(raw));
+}
+
+export function toComparableTaskDefinition(
+  raw: Record<string, unknown>,
+): ComparableTaskDefinition {
+  return asComparable(stripAwsGeneratedFields(raw));
 }

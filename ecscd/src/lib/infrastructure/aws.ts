@@ -16,9 +16,12 @@ import {
   EcsServiceStatus,
   ServiceDomain,
 } from "../domain/application";
-import { TaskDefinitionSpec } from "../domain/task-definition";
+import {
+  ComparableTaskDefinition,
+  DesiredTaskDefinitionSpec,
+} from "../domain/task-definition";
 import { IAws } from "./interface/aws";
-import { toTaskDefinitionSpec } from "./task-definition-normalizer";
+import { toComparableTaskDefinition } from "./task-definition-normalizer";
 
 import {
   STSClient,
@@ -67,9 +70,9 @@ function toEcsRolloutState(status: string | undefined): EcsRolloutState {
 }
 
 function toRegisterTaskDefinitionInput(
-  spec: TaskDefinitionSpec,
+  spec: DesiredTaskDefinitionSpec,
 ): RegisterTaskDefinitionCommandInput {
-  return spec as RegisterTaskDefinitionCommandInput;
+  return spec as unknown as RegisterTaskDefinitionCommandInput;
 }
 
 export class AWS implements IAws {
@@ -158,7 +161,7 @@ export class AWS implements IAws {
   async describeTaskDefinition(
     awsConfig: ApplicationDomain["awsConfig"],
     taskDefinitionArn: string
-  ): Promise<TaskDefinitionSpec | undefined> {
+  ): Promise<ComparableTaskDefinition | undefined> {
     const client = await this.createEcsClient(awsConfig);
     const command = new DescribeTaskDefinitionCommand({
       taskDefinition: taskDefinitionArn,
@@ -167,14 +170,14 @@ export class AWS implements IAws {
     if (!response.taskDefinition) {
       return undefined;
     }
-    return toTaskDefinitionSpec(
+    return toComparableTaskDefinition(
       response.taskDefinition as unknown as Record<string, unknown>,
     );
   }
 
   async registerTaskDefinition(
     awsConfig: ApplicationDomain["awsConfig"],
-    taskDef: TaskDefinitionSpec
+    taskDef: DesiredTaskDefinitionSpec
   ): Promise<string> {
     const client = await this.createEcsClient(awsConfig);
     const taskDefInput = toRegisterTaskDefinitionInput(taskDef);

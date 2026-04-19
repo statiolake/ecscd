@@ -1,4 +1,4 @@
-export interface TaskDefinitionSpec {
+export interface TaskDefinitionFields {
   family?: string;
   taskRoleArn?: string;
   executionRoleArn?: string;
@@ -17,4 +17,32 @@ export interface TaskDefinitionSpec {
   proxyConfiguration?: Record<string, unknown>;
   inferenceAccelerators?: Record<string, unknown>[];
   [key: string]: unknown;
+}
+
+export type DesiredTaskDefinitionSpec = TaskDefinitionFields & {
+  readonly __tag: "Desired";
+};
+
+export type ComparableTaskDefinition = TaskDefinitionFields & {
+  readonly __tag: "Comparable";
+};
+
+export function asDesired(
+  fields: TaskDefinitionFields,
+): DesiredTaskDefinitionSpec {
+  return fields as DesiredTaskDefinitionSpec;
+}
+
+export function asComparable(
+  fields: TaskDefinitionFields,
+): ComparableTaskDefinition {
+  return fields as ComparableTaskDefinition;
+}
+
+// ユーザーが宣言した desired spec は AWS 生成フィールドを含まない前提なので、
+// そのまま比較対象としても解釈できる。branded type 上の変換のみ。
+export function desiredToComparable(
+  desired: DesiredTaskDefinitionSpec,
+): ComparableTaskDefinition {
+  return desired as unknown as ComparableTaskDefinition;
 }

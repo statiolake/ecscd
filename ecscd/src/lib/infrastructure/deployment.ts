@@ -4,7 +4,10 @@ import {
   IGithub,
 } from "./interface/github";
 import { ApplicationDomain, ServiceDomain } from "../domain/application";
-import { TaskDefinitionSpec } from "../domain/task-definition";
+import {
+  desiredToComparable,
+  DesiredTaskDefinitionSpec,
+} from "../domain/task-definition";
 import {
   DeploymentRepository,
   TaskDefinitionsForDiff,
@@ -13,9 +16,9 @@ import {
 export class Deployment implements DeploymentRepository {
   constructor(private aws: IAws, private github: IGithub) {}
 
-  private async resolveTargetTaskDefinition(
+  private async resolveDesiredTaskDefinition(
     application: ApplicationDomain
-  ): Promise<TaskDefinitionSpec> {
+  ): Promise<DesiredTaskDefinitionSpec> {
     const result = await this.github.getTaskDefinition(application.gitConfig);
     if (result.status === "Error") {
       throw new Error(formatGitTaskDefinitionError(result.error));
@@ -24,10 +27,10 @@ export class Deployment implements DeploymentRepository {
   }
 
   async syncService(application: ApplicationDomain): Promise<void> {
-    const taskDefinition = await this.resolveTargetTaskDefinition(application);
+    const desired = await this.resolveDesiredTaskDefinition(application);
     const taskDefinitionArn = await this.aws.registerTaskDefinition(
       application.awsConfig,
-      taskDefinition
+      desired
     );
     await this.aws.updateService(
       application.awsConfig,
@@ -47,7 +50,7 @@ export class Deployment implements DeploymentRepository {
     application: ApplicationDomain,
     service?: ServiceDomain,
   ): Promise<TaskDefinitionsForDiff> {
-    const taskDefinition = await this.resolveTargetTaskDefinition(application);
+    const desired = await this.resolveDesiredTaskDefinition(application);
     const currentService =
       service ||
       (await this.aws.describeServices(
@@ -71,7 +74,7 @@ export class Deployment implements DeploymentRepository {
 
     return {
       current: currentTaskDef,
-      target: taskDefinition,
+      target: desiredToComparable(desired),
     };
   }
 }
