@@ -20,11 +20,19 @@ export async function POST(
         { status: 404 }
       );
     }
-    await du.rollback(application);
-    return NextResponse.json(
-      { message: "Service rolled back successfully" },
-      { status: 200 }
-    );
+    const result = await du.rollbackApplication({ application });
+    switch (result.type) {
+      case "Succeeded":
+        return NextResponse.json(
+          { message: "Service rolled back successfully" },
+          { status: 200 }
+        );
+      case "Failed":
+        return NextResponse.json(
+          { error: result.reason },
+          { status: 500 }
+        );
+    }
   } catch (error) {
     console.error("Error rolling back service:", error);
     return NextResponse.json(

@@ -1,4 +1,9 @@
-import { FilterDomain } from "../domain/filter";
+import {
+  FilterDomain,
+  create as createFilterDomain,
+} from "../domain/filter";
+import { Clock } from "../infrastructure/interface/clock";
+import { IdGenerator } from "../infrastructure/interface/id-generator";
 import { FilterRepository } from "../repository/filter";
 
 export interface IFilterUsecase {
@@ -9,7 +14,11 @@ export interface IFilterUsecase {
 }
 
 export class FilterUsecase implements IFilterUsecase {
-  constructor(private filterRepository: FilterRepository) {}
+  constructor(
+    private filterRepository: FilterRepository,
+    private clock: Clock,
+    private idGenerator: IdGenerator,
+  ) {}
 
   async getFilters(): Promise<FilterDomain[]> {
     return this.filterRepository.getFilters();
@@ -20,13 +29,12 @@ export class FilterUsecase implements IFilterUsecase {
   }
 
   async createFilter(name: string, pattern: string): Promise<FilterDomain> {
-    const filter: FilterDomain = {
-      id: crypto.randomUUID(),
+    const filter = createFilterDomain({
+      id: this.idGenerator.nextId(),
       name,
       pattern,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+      now: this.clock.now(),
+    });
 
     await this.filterRepository.createFilter(filter);
     return filter;

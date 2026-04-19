@@ -20,11 +20,19 @@ export async function POST(
         { status: 404 }
       );
     }
-    await du.syncService(application);
-    return NextResponse.json(
-      { message: "Service synchronized successfully" },
-      { status: 200 }
-    );
+    const result = await du.syncApplication({ application });
+    switch (result.type) {
+      case "Succeeded":
+        return NextResponse.json(
+          { message: "Service synchronized successfully" },
+          { status: 200 }
+        );
+      case "Failed":
+        return NextResponse.json(
+          { error: result.reason },
+          { status: 500 }
+        );
+    }
   } catch (error) {
     console.error("Error synchronizing service:", error);
     return NextResponse.json(
