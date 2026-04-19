@@ -9,7 +9,8 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { ApplicationDomain } from "../domain/application";
 import { FilterDomain } from "../domain/filter";
-import { IDatabase } from "./interface/database";
+import { ApplicationRepository } from "../repository/application";
+import { FilterRepository } from "../repository/filter";
 
 interface ApplicationsModel {
   name: string;
@@ -36,33 +37,35 @@ interface FiltersModel {
   updated_at: string;
 }
 
-export class DynamoDB implements IDatabase {
-  private client: DynamoDBDocumentClient;
-  private tableName: string;
+export class DynamoDbConnection {
+  readonly client: DynamoDBDocumentClient;
+  readonly tableName: string;
 
   constructor(region: string, tableName: string = "ECSCD") {
     const dynamoDBClient = new DynamoDBClient({ region });
     this.client = DynamoDBDocumentClient.from(dynamoDBClient);
     this.tableName = tableName;
   }
+}
+
+export class DynamoDbApplicationRepository implements ApplicationRepository {
+  constructor(private connection: DynamoDbConnection) {}
 
   async getApplications(): Promise<ApplicationDomain[]> {
     try {
       const command = new ScanCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         FilterExpression: "item_type = :item_type",
         ExpressionAttributeValues: {
           ":item_type": "application",
         },
       });
 
-      const response = await this.client.send(command);
+      const response = await this.connection.client.send(command);
       const items = response.Items || [];
 
-      const applications: ApplicationDomain[] = await Promise.all(
-        items.map((item) =>
-          this.mapItemToApplication(item as ApplicationsModel),
-        ),
+      const applications = items.map((item) =>
+        mapItemToApplication(item as ApplicationsModel),
       );
 
       return applications.sort(
@@ -77,7 +80,7 @@ export class DynamoDB implements IDatabase {
   async getApplicationNames(): Promise<string[]> {
     try {
       const command = new ScanCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         FilterExpression: "item_type = :item_type",
         ExpressionAttributeValues: {
           ":item_type": "application",
@@ -88,10 +91,9 @@ export class DynamoDB implements IDatabase {
         },
       });
 
-      const response = await this.client.send(command);
+      const response = await this.connection.client.send(command);
       const items = response.Items || [];
 
-      // Sort by created_at descending and return names
       return items
         .sort((a, b) => {
           const dateA = new Date(a.created_at as string).getTime();
@@ -104,10 +106,29 @@ export class DynamoDB implements IDatabase {
     }
   }
 
+  async getApplication(name: string): Promise<ApplicationDomain | null> {
+    try {
+      const command = new GetCommand({
+        TableName: this.connection.tableName,
+        Key: { name },
+      });
+      const response = await this.connection.client.send(command);
+      if (!response.Item) {
+        return null;
+      }
+      if ((response.Item as ApplicationsModel).item_type !== "application") {
+        return null;
+      }
+      return mapItemToApplication(response.Item as ApplicationsModel);
+    } catch (error) {
+      throw new Error(`Failed to get application: ${error}`);
+    }
+  }
+
   async createApplication(application: ApplicationDomain): Promise<void> {
     try {
       const command = new PutCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Item: {
           name: application.name,
           item_type: "application",
@@ -128,7 +149,7 @@ export class DynamoDB implements IDatabase {
         },
       });
 
-      await this.client.send(command);
+      await this.connection.client.send(command);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -145,7 +166,7 @@ export class DynamoDB implements IDatabase {
   async updateApplication(application: ApplicationDomain): Promise<void> {
     try {
       const command = new UpdateCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Key: {
           name: application.name,
         },
@@ -176,7 +197,7 @@ export class DynamoDB implements IDatabase {
         },
       });
 
-      await this.client.send(command);
+      await this.connection.client.send(command);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -193,7 +214,7 @@ export class DynamoDB implements IDatabase {
   async deleteApplication(name: string): Promise<void> {
     try {
       const command = new DeleteCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Key: {
           name: name,
         },
@@ -203,7 +224,7 @@ export class DynamoDB implements IDatabase {
         },
       });
 
-      await this.client.send(command);
+      await this.connection.client.send(command);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -214,46 +235,26 @@ export class DynamoDB implements IDatabase {
       throw new Error(`Failed to delete application: ${error}`);
     }
   }
+}
 
-  private async mapItemToApplication(
-    item: ApplicationsModel,
-  ): Promise<ApplicationDomain> {
-    return {
-      name: item.name,
-      gitConfig: {
-        repo: item.git_repo,
-        branch: item.git_branch,
-        path: item.git_path,
-      },
-      ecsConfig: {
-        cluster: item.ecs_cluster,
-        service: item.ecs_service,
-      },
-      awsConfig: {
-        region: item.aws_region,
-        roleArn: item.aws_role_arn,
-        externalId: item.aws_external_id,
-      },
-      createdAt: new Date(item.created_at),
-      updatedAt: new Date(item.updated_at),
-    };
-  }
+export class DynamoDbFilterRepository implements FilterRepository {
+  constructor(private connection: DynamoDbConnection) {}
 
   async getFilters(): Promise<FilterDomain[]> {
     try {
       const command = new ScanCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         FilterExpression: "item_type = :item_type",
         ExpressionAttributeValues: {
           ":item_type": "filter",
         },
       });
 
-      const response = await this.client.send(command);
+      const response = await this.connection.client.send(command);
       const items = response.Items || [];
 
-      const filters: FilterDomain[] = items.map((item) =>
-        this.mapItemToFilter(item as FiltersModel),
+      const filters = items.map((item) =>
+        mapItemToFilter(item as FiltersModel),
       );
 
       return filters.sort(
@@ -268,18 +269,18 @@ export class DynamoDB implements IDatabase {
   async getFilterById(id: string): Promise<FilterDomain | null> {
     try {
       const command = new GetCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Key: {
           name: `filter#${id}`,
         },
       });
 
-      const response = await this.client.send(command);
+      const response = await this.connection.client.send(command);
       if (!response.Item) {
         return null;
       }
 
-      return this.mapItemToFilter(response.Item as FiltersModel);
+      return mapItemToFilter(response.Item as FiltersModel);
     } catch (error) {
       throw new Error(`Failed to get filter: ${error}`);
     }
@@ -288,7 +289,7 @@ export class DynamoDB implements IDatabase {
   async createFilter(filter: FilterDomain): Promise<void> {
     try {
       const command = new PutCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Item: {
           name: `filter#${filter.id}`,
           id: filter.id,
@@ -304,7 +305,7 @@ export class DynamoDB implements IDatabase {
         },
       });
 
-      await this.client.send(command);
+      await this.connection.client.send(command);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -319,25 +320,47 @@ export class DynamoDB implements IDatabase {
   async deleteFilter(id: string): Promise<void> {
     try {
       const command = new DeleteCommand({
-        TableName: this.tableName,
+        TableName: this.connection.tableName,
         Key: {
           name: `filter#${id}`,
         },
       });
 
-      await this.client.send(command);
+      await this.connection.client.send(command);
     } catch (error) {
       throw new Error(`Failed to delete filter: ${error}`);
     }
   }
+}
 
-  private mapItemToFilter(item: FiltersModel): FilterDomain {
-    return {
-      id: item.id,
-      name: item.filter_name,
-      pattern: item.pattern,
-      createdAt: new Date(item.created_at),
-      updatedAt: new Date(item.updated_at),
-    };
-  }
+function mapItemToApplication(item: ApplicationsModel): ApplicationDomain {
+  return {
+    name: item.name,
+    gitConfig: {
+      repo: item.git_repo,
+      branch: item.git_branch,
+      path: item.git_path,
+    },
+    ecsConfig: {
+      cluster: item.ecs_cluster,
+      service: item.ecs_service,
+    },
+    awsConfig: {
+      region: item.aws_region,
+      roleArn: item.aws_role_arn,
+      externalId: item.aws_external_id,
+    },
+    createdAt: new Date(item.created_at),
+    updatedAt: new Date(item.updated_at),
+  };
+}
+
+function mapItemToFilter(item: FiltersModel): FilterDomain {
+  return {
+    id: item.id,
+    name: item.filter_name,
+    pattern: item.pattern,
+    createdAt: new Date(item.created_at),
+    updatedAt: new Date(item.updated_at),
+  };
 }

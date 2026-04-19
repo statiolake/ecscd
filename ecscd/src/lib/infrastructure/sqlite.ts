@@ -3,7 +3,8 @@ import * as path from "path";
 import sqlite3, { Database } from "sqlite3";
 import { ApplicationDomain } from "../domain/application";
 import { FilterDomain } from "../domain/filter";
-import { IDatabase } from "./interface/database";
+import { ApplicationRepository } from "../repository/application";
+import { FilterRepository } from "../repository/filter";
 
 interface ApplicationsModel {
   name: string;
@@ -27,78 +28,63 @@ interface FiltersModel {
   updated_at: string;
 }
 
-export class SQLite implements IDatabase {
-  private db: Database;
+export class SqliteConnection {
+  readonly db: Database;
+
   constructor(dbPath: string) {
-    // Ensure directory exists before creating database
     const dbDir = path.dirname(dbPath);
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
 
     this.db = new sqlite3.Database(dbPath);
-    this.initializeDatabase();
+    this.initializeSchema();
   }
-  private async initializeDatabase(): Promise<void> {
-    // Initialize SQLite database connection and create tables if they don't exist
-    return new Promise((resolve, reject) => {
-      this.db.serialize(() => {
-        this.db.run(
-          `
-            CREATE TABLE IF NOT EXISTS applications (
-                name TEXT PRIMARY KEY,
-                git_repo TEXT NOT NULL,
-                git_branch TEXT NOT NULL,
-                git_path TEXT NOT NULL,
-                ecs_cluster TEXT NOT NULL,
-                ecs_service TEXT NOT NULL,
-                aws_region TEXT NOT NULL,
-                aws_role_arn TEXT,
-                aws_external_id TEXT NOT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL
-            )`,
-          (err: Error | null) => {
-            if (err) {
-              reject(err);
-              return;
-            }
 
-            this.db.run(
-              `
-                CREATE TABLE IF NOT EXISTS filters (
-                    id TEXT PRIMARY KEY,
-                    name TEXT NOT NULL,
-                    pattern TEXT NOT NULL,
-                    created_at DATETIME NOT NULL,
-                    updated_at DATETIME NOT NULL
-                )`,
-              (filterErr: Error | null) => {
-                if (filterErr) {
-                  reject(filterErr);
-                  return;
-                }
-
-                resolve();
-              },
-            );
-          },
-        );
-      });
+  private initializeSchema(): void {
+    this.db.serialize(() => {
+      this.db.run(
+        `
+          CREATE TABLE IF NOT EXISTS applications (
+              name TEXT PRIMARY KEY,
+              git_repo TEXT NOT NULL,
+              git_branch TEXT NOT NULL,
+              git_path TEXT NOT NULL,
+              ecs_cluster TEXT NOT NULL,
+              ecs_service TEXT NOT NULL,
+              aws_region TEXT NOT NULL,
+              aws_role_arn TEXT,
+              aws_external_id TEXT NOT NULL,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+          )`,
+      );
+      this.db.run(
+        `
+          CREATE TABLE IF NOT EXISTS filters (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              pattern TEXT NOT NULL,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+          )`,
+      );
     });
   }
+}
+
+export class SqliteApplicationRepository implements ApplicationRepository {
+  constructor(private connection: SqliteConnection) {}
+
   async getApplications(): Promise<ApplicationDomain[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(
+      this.connection.db.all(
         `SELECT * FROM applications ORDER BY created_at DESC`,
-        async (err: Error | null, rows: ApplicationsModel[]) => {
+        (err: Error | null, rows: ApplicationsModel[]) => {
           if (err) {
             return reject(err);
           }
-          const applications: ApplicationDomain[] = await Promise.all(
-            rows.map((row) => this.mapRowToApplication(row)),
-          );
-          resolve(applications);
+          resolve(rows.map(mapRowToApplication));
         },
       );
     });
@@ -106,7 +92,7 @@ export class SQLite implements IDatabase {
 
   async getApplicationNames(): Promise<string[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(
+      this.connection.db.all(
         `SELECT name FROM applications ORDER BY created_at DESC`,
         (err: Error | null, rows: { name: string }[]) => {
           if (err) {
@@ -118,9 +104,27 @@ export class SQLite implements IDatabase {
     });
   }
 
+  async getApplication(name: string): Promise<ApplicationDomain | null> {
+    return new Promise((resolve, reject) => {
+      this.connection.db.get(
+        `SELECT * FROM applications WHERE name = ?`,
+        [name],
+        (err: Error | null, row: ApplicationsModel | undefined) => {
+          if (err) {
+            return reject(err);
+          }
+          if (!row) {
+            return resolve(null);
+          }
+          resolve(mapRowToApplication(row));
+        },
+      );
+    });
+  }
+
   async createApplication(application: ApplicationDomain): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(
+      this.connection.db.run(
         `INSERT INTO applications (
             name,
             git_repo,
@@ -156,9 +160,10 @@ export class SQLite implements IDatabase {
       );
     });
   }
+
   async updateApplication(application: ApplicationDomain): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(
+      this.connection.db.run(
         `UPDATE applications SET
             git_repo = ?,
             git_branch = ?,
@@ -189,9 +194,10 @@ export class SQLite implements IDatabase {
       );
     });
   }
+
   async deleteApplication(name: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(
+      this.connection.db.run(
         `DELETE FROM applications WHERE name = ?`,
         [name],
         (err: Error | null) => {
@@ -203,42 +209,20 @@ export class SQLite implements IDatabase {
       );
     });
   }
-  private async mapRowToApplication(
-    row: ApplicationsModel,
-  ): Promise<ApplicationDomain> {
-    return {
-      name: row.name,
-      gitConfig: {
-        repo: row.git_repo,
-        branch: row.git_branch,
-        path: row.git_path,
-      },
-      ecsConfig: {
-        cluster: row.ecs_cluster,
-        service: row.ecs_service,
-      },
-      awsConfig: {
-        region: row.aws_region,
-        roleArn: row.aws_role_arn,
-        externalId: row.aws_external_id,
-      },
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    };
-  }
+}
+
+export class SqliteFilterRepository implements FilterRepository {
+  constructor(private connection: SqliteConnection) {}
 
   async getFilters(): Promise<FilterDomain[]> {
     return new Promise((resolve, reject) => {
-      this.db.all(
+      this.connection.db.all(
         `SELECT * FROM filters ORDER BY created_at DESC`,
         (err: Error | null, rows: FiltersModel[]) => {
           if (err) {
             return reject(err);
           }
-          const filters: FilterDomain[] = rows.map((row) =>
-            this.mapRowToFilter(row),
-          );
-          resolve(filters);
+          resolve(rows.map(mapRowToFilter));
         },
       );
     });
@@ -246,7 +230,7 @@ export class SQLite implements IDatabase {
 
   async getFilterById(id: string): Promise<FilterDomain | null> {
     return new Promise((resolve, reject) => {
-      this.db.get(
+      this.connection.db.get(
         `SELECT * FROM filters WHERE id = ?`,
         [id],
         (err: Error | null, row: FiltersModel | undefined) => {
@@ -256,7 +240,7 @@ export class SQLite implements IDatabase {
           if (!row) {
             return resolve(null);
           }
-          resolve(this.mapRowToFilter(row));
+          resolve(mapRowToFilter(row));
         },
       );
     });
@@ -264,7 +248,7 @@ export class SQLite implements IDatabase {
 
   async createFilter(filter: FilterDomain): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(
+      this.connection.db.run(
         `INSERT INTO filters (id, name, pattern, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
         [
           filter.id,
@@ -285,7 +269,7 @@ export class SQLite implements IDatabase {
 
   async deleteFilter(id: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.db.run(
+      this.connection.db.run(
         `DELETE FROM filters WHERE id = ?`,
         [id],
         (err: Error | null) => {
@@ -297,14 +281,36 @@ export class SQLite implements IDatabase {
       );
     });
   }
+}
 
-  private mapRowToFilter(row: FiltersModel): FilterDomain {
-    return {
-      id: row.id,
-      name: row.name,
-      pattern: row.pattern,
-      createdAt: new Date(row.created_at),
-      updatedAt: new Date(row.updated_at),
-    };
-  }
+function mapRowToApplication(row: ApplicationsModel): ApplicationDomain {
+  return {
+    name: row.name,
+    gitConfig: {
+      repo: row.git_repo,
+      branch: row.git_branch,
+      path: row.git_path,
+    },
+    ecsConfig: {
+      cluster: row.ecs_cluster,
+      service: row.ecs_service,
+    },
+    awsConfig: {
+      region: row.aws_region,
+      roleArn: row.aws_role_arn,
+      externalId: row.aws_external_id,
+    },
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
+}
+
+function mapRowToFilter(row: FiltersModel): FilterDomain {
+  return {
+    id: row.id,
+    name: row.name,
+    pattern: row.pattern,
+    createdAt: new Date(row.created_at),
+    updatedAt: new Date(row.updated_at),
+  };
 }
