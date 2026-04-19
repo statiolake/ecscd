@@ -222,13 +222,42 @@ export function create(
   return {
     ok: true,
     application: {
-      name: input.name,
-      gitConfig: input.gitConfig,
-      ecsConfig: input.ecsConfig,
-      awsConfig: input.awsConfig,
+      name: input.name.trim(),
+      gitConfig: normalizeGitConfig(input.gitConfig),
+      ecsConfig: normalizeEcsConfig(input.ecsConfig),
+      awsConfig: normalizeAwsConfig(input.awsConfig),
       createdAt: input.now,
       updatedAt: input.now,
     },
+  };
+}
+
+function normalizeGitConfig(
+  gitConfig: GitTaskDefinitionSource,
+): GitTaskDefinitionSource {
+  return {
+    repo: gitConfig.repo.trim(),
+    branch: gitConfig.branch.trim(),
+    path: gitConfig.path.trim(),
+  };
+}
+
+function normalizeEcsConfig(
+  ecsConfig: EcsServiceTarget,
+): EcsServiceTarget {
+  return {
+    cluster: ecsConfig.cluster.trim(),
+    service: ecsConfig.service.trim(),
+  };
+}
+
+function normalizeAwsConfig(
+  awsConfig: AwsAccessProfile,
+): AwsAccessProfile {
+  return {
+    region: awsConfig.region?.trim() || undefined,
+    roleArn: awsConfig.roleArn?.trim() || undefined,
+    externalId: awsConfig.externalId.trim(),
   };
 }
 
@@ -248,9 +277,9 @@ export function updateSettings(
     ok: true,
     application: {
       ...application,
-      gitConfig: input.gitConfig,
-      ecsConfig: input.ecsConfig,
-      awsConfig: input.awsConfig,
+      gitConfig: normalizeGitConfig(input.gitConfig),
+      ecsConfig: normalizeEcsConfig(input.ecsConfig),
+      awsConfig: normalizeAwsConfig(input.awsConfig),
       updatedAt: input.now,
     },
   };

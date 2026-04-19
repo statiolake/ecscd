@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Loader2 } from 'lucide-react';
 import { APPLICATION_DEFAULT_REGION } from '@/lib/constants';
+import { isValidGitHubRepoUrl } from '@/lib/domain/application';
 
 interface NewApplicationDialogProps {
   open: boolean;
@@ -76,7 +77,7 @@ export function NewApplicationDialog({ open, onOpenChange, onSuccess }: NewAppli
 
     if (!formData.repository.trim()) {
       newErrors.repository = 'Repository URL is required';
-    } else if (!isValidGitUrl(formData.repository)) {
+    } else if (!isValidGitHubRepoUrl(formData.repository)) {
       newErrors.repository = 'Please enter a valid Git repository URL';
     }
 
@@ -92,11 +93,6 @@ export function NewApplicationDialog({ open, onOpenChange, onSuccess }: NewAppli
     return Object.keys(newErrors).length === 0;
   };
 
-  const isValidGitUrl = (url: string): boolean => {
-    const gitUrlPattern = /^(https?:\/\/)?([\w\.-]+@)?([\w\.-]+)(:\d+)?(\/.*)?\.git$/i;
-    const githubPattern = /^https?:\/\/github\.com\/[\w\.-]+\/[\w\.-]+\/?$/i;
-    return gitUrlPattern.test(url) || githubPattern.test(url);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
