@@ -4,6 +4,7 @@
 		"context": ".",
 		"dockerfile": "Dockerfile"
 	},
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
 	"workspaceFolder": "/workspace",
 	"customizations": {
 		"vscode": {
@@ -18,7 +19,6 @@
 		}
 	},
 	"mounts": [
-		"source=${localWorkspaceFolder},target=/workspace,type=bind",
 		"source=ecscd-node_modules,target=/workspace/ecscd/node_modules,type=volume",
 		"source=ecscd-next,target=/workspace/ecscd/.next,type=volume",
 		"source=${env:HOME}/.aws,target=/root/.aws,type=bind,readonly",
