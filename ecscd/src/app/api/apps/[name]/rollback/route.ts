@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { au, du } from "@/lib/di";
+import { du } from "@/lib/di";
 
 export async function POST(
   request: NextRequest,
@@ -13,24 +13,23 @@ export async function POST(
         { status: 400 }
       );
     }
-    const application = await au.getApplication(name);
-    if (!application) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 }
-      );
-    }
-    const result = await du.rollbackApplication({ application });
+
+    const result = await du.rollbackApplication({ name });
     switch (result.type) {
       case "Succeeded":
         return NextResponse.json(
           { message: "Service rolled back successfully" },
           { status: 200 }
         );
-      case "Failed":
+      case "NotFound":
+        return NextResponse.json(
+          { error: "Application not found" },
+          { status: 404 }
+        );
+      case "AwsFailure":
         return NextResponse.json(
           { error: result.reason },
-          { status: 500 }
+          { status: 502 }
         );
     }
   } catch (error) {

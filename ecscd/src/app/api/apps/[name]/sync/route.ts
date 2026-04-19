@@ -1,5 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { au, du } from "@/lib/di";
+import { du } from "@/lib/di";
+import { GitTaskDefinitionError } from "@/lib/infrastructure/interface/github";
+
+function formatGitError(error: GitTaskDefinitionError): string {
+  switch (error.type) {
+    case "InvalidRepositoryUrl":
+      return `Invalid GitHub repository URL: "${error.url}"`;
+    case "CommitNotFound":
+      return `No commits found on branch "${error.branch}".`;
+    case "FileNotFound":
+      return `Task definition file not found at "${error.path}".`;
+    case "InvalidTaskDefinition":
+      return `Invalid task definition: ${error.reason}`;
+    case "FetchFailed":
+      return `Failed to fetch task definition from GitHub: ${error.reason}`;
+  }
+}
 
 export async function POST(
   request: NextRequest,
@@ -13,24 +29,28 @@ export async function POST(
         { status: 400 }
       );
     }
-    const application = await au.getApplication(name);
-    if (!application) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 }
-      );
-    }
-    const result = await du.syncApplication({ application });
+
+    const result = await du.syncApplication({ name });
     switch (result.type) {
       case "Succeeded":
         return NextResponse.json(
           { message: "Service synchronized successfully" },
           { status: 200 }
         );
-      case "Failed":
+      case "NotFound":
+        return NextResponse.json(
+          { error: "Application not found" },
+          { status: 404 }
+        );
+      case "GitFailure":
+        return NextResponse.json(
+          { error: formatGitError(result.error) },
+          { status: 502 }
+        );
+      case "AwsFailure":
         return NextResponse.json(
           { error: result.reason },
-          { status: 500 }
+          { status: 502 }
         );
     }
   } catch (error) {

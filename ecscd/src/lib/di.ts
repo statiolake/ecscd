@@ -1,6 +1,5 @@
 import { ApplicationUsecase, IApplicationUsecase } from "./usecase/application";
 import { DeploymentUsecase } from "./usecase/deployment";
-import { Deployment } from "./infrastructure/deployment";
 import { AWS } from "./infrastructure/aws";
 import { GitHub } from "./infrastructure/github";
 import {
@@ -51,17 +50,15 @@ function createRepositories(): {
 
 const { applications: ar, filters: fr } = createRepositories();
 const aws = new AWS();
-const dr = new Deployment(
-  aws,
-  new GitHub(process.env.GITHUB_TOKEN || "")
-);
+const github = new GitHub(process.env.GITHUB_TOKEN || "");
 const observer = new DefaultApplicationObserver(
   new AwsServiceStateProvider(aws),
-  dr,
+  aws,
+  github,
 );
 const clock = new SystemClock();
 const idGenerator = new UuidGenerator();
 
 export const au: IApplicationUsecase = new ApplicationUsecase(ar, observer);
-export const du = new DeploymentUsecase(dr);
+export const du = new DeploymentUsecase(ar, aws, github);
 export const fu = new FilterUsecase(fr, clock, idGenerator);
