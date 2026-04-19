@@ -1,5 +1,4 @@
 import { au } from "@/lib/di";
-import * as Applications from "@/lib/domain/application";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -48,25 +47,25 @@ export async function PUT(
       );
     }
 
-    const existingApp = await au.getApplication(name);
-    if (!existingApp) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 },
-      );
-    }
-
-    const updatedApp = Applications.updateSettings(existingApp, {
+    const result = await au.updateApplicationSettings({
+      name,
       gitConfig,
       ecsConfig,
       awsConfig,
-      now: new Date(),
     });
-    await au.updateApplication(updatedApp);
-    return NextResponse.json(
-      { message: "Application updated successfully" },
-      { status: 200 },
-    );
+
+    switch (result.type) {
+      case "Updated":
+        return NextResponse.json(
+          { message: "Application updated successfully" },
+          { status: 200 },
+        );
+      case "NotFound":
+        return NextResponse.json(
+          { error: "Application not found" },
+          { status: 404 },
+        );
+    }
   } catch (error) {
     console.error("Error updating application:", error);
     return NextResponse.json(
@@ -88,19 +87,21 @@ export async function DELETE(
         { status: 400 },
       );
     }
-    const existingApp = await au.getApplication(name);
-    if (!existingApp) {
-      return NextResponse.json(
-        { error: "Application not found" },
-        { status: 404 },
-      );
-    }
 
-    await au.deleteApplication(name);
-    return NextResponse.json(
-      { message: "Application deleted successfully" },
-      { status: 200 },
-    );
+    const result = await au.deleteApplication(name);
+
+    switch (result.type) {
+      case "Deleted":
+        return NextResponse.json(
+          { message: "Application deleted successfully" },
+          { status: 200 },
+        );
+      case "NotFound":
+        return NextResponse.json(
+          { error: "Application not found" },
+          { status: 404 },
+        );
+    }
   } catch (error) {
     console.error("Error deleting application:", error);
     return NextResponse.json(
