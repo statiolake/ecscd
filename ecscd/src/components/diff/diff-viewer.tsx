@@ -3,10 +3,14 @@
 import { Button } from '@/components/ui/button';
 import {
   ApplicationDomain,
-  getApplicationDiffSummary,
+  getApplicationDiffCount,
   getApplicationDiffs,
   getApplicationStatus,
 } from '@/lib/domain/application';
+import {
+  formatApplicationStatusReason,
+  formatDiffSummary,
+} from '@/lib/application-status-ui';
 import { ChevronDown, ChevronRight, Edit3, Minus, Play, Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -24,10 +28,10 @@ export function DiffViewer({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const applicationStatus = getApplicationStatus(application);
   const diffs = getApplicationDiffs(application);
-  const summary = getApplicationDiffSummary(application);
+  const summary = formatDiffSummary(getApplicationDiffCount(application));
   const error =
     applicationStatus.status === "Error"
-      ? applicationStatus.reason
+      ? formatApplicationStatusReason(applicationStatus)
       : undefined;
 
   const toggleExpanded = (path: string) => {

@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/badge";
 import {
     formatApplicationStatus,
+    formatApplicationStatusReason,
     getApplicationStatusBadgeClass,
     getApplicationStatusDotClass,
     getApplicationStatusTextClass,
@@ -157,8 +158,7 @@ export function ApplicationStatusBadge({
 }) {
   const applicationStatus = getApplicationStatus(application);
   const { status } = applicationStatus;
-  const reason =
-    "reason" in applicationStatus ? applicationStatus.reason : undefined;
+  const reason = formatApplicationStatusReason(applicationStatus);
   const label = formatApplicationStatus(status);
 
   return (
@@ -184,8 +184,7 @@ export function ApplicationStatusDot({
 }) {
   const applicationStatus = getApplicationStatus(application);
   const { status } = applicationStatus;
-  const reason =
-    "reason" in applicationStatus ? applicationStatus.reason : undefined;
+  const reason = formatApplicationStatusReason(applicationStatus);
   const label = formatApplicationStatus(status);
 
   return (

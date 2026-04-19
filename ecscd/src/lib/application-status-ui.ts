@@ -1,4 +1,11 @@
-import { ApplicationStatus } from "@/lib/domain/application";
+import {
+  ApplicationDeployingReason,
+  ApplicationErrorReason,
+  ApplicationFailedReason,
+  ApplicationLoadingReason,
+  ApplicationStatus,
+  ApplicationStatusReason,
+} from "@/lib/domain/application";
 
 export function formatApplicationStatus(status: ApplicationStatus) {
   switch (status) {
@@ -17,6 +24,69 @@ export function formatApplicationStatus(status: ApplicationStatus) {
     default:
       return status;
   }
+}
+
+export function formatApplicationStatusReason(
+  reason: ApplicationStatusReason,
+): string | undefined {
+  switch (reason.status) {
+    case "Loading":
+      return formatLoadingReason(reason.reason);
+    case "Error":
+      return formatErrorReason(reason.reason);
+    case "Deploying":
+      return formatDeployingReason(reason.reason);
+    case "Failed":
+      return formatFailedReason(reason.reason);
+    case "InSync":
+    case "OutOfSync":
+      return undefined;
+  }
+}
+
+function formatLoadingReason(reason: ApplicationLoadingReason): string {
+  switch (reason.type) {
+    case "ObservationPending":
+    case "ServiceStateLoading":
+      return "Loading ECS service state...";
+    case "DiffLoading":
+      return "Loading configuration diff...";
+    case "SyncStatusLoading":
+      return "Loading sync status...";
+  }
+}
+
+function formatErrorReason(reason: ApplicationErrorReason): string {
+  switch (reason.type) {
+    case "ServiceStateUnavailable":
+      return reason.detail || "Failed to fetch ECS service state.";
+    case "SyncComparisonFailed":
+      return (
+        reason.detail || "Failed to compare ECS and GitHub configuration."
+      );
+    case "ServiceNotActive":
+      return `ECS service is ${reason.serviceStatus}. ecscd requires an ACTIVE service.`;
+    case "SyncStatusUndetermined":
+      return "Failed to determine sync status.";
+  }
+}
+
+function formatDeployingReason(reason: ApplicationDeployingReason): string {
+  switch (reason.type) {
+    case "DeploymentInProgress":
+      return reason.detail || "Deployment is in progress.";
+  }
+}
+
+function formatFailedReason(reason: ApplicationFailedReason): string {
+  switch (reason.type) {
+    case "DeploymentFailed":
+      return reason.detail || "The last deployment failed.";
+  }
+}
+
+export function formatDiffSummary(count: number): string {
+  return `${count} changes`;
 }
 
 export function getApplicationStatusDotClass(status: ApplicationStatus) {

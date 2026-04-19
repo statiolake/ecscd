@@ -12,11 +12,29 @@ export type ApplicationStatus =
   | "OutOfSync"
   | "InSync";
 
+export type ApplicationLoadingReason =
+  | { type: "ObservationPending" }
+  | { type: "ServiceStateLoading" }
+  | { type: "DiffLoading" }
+  | { type: "SyncStatusLoading" };
+
+export type ApplicationErrorReason =
+  | { type: "ServiceStateUnavailable"; detail?: string }
+  | { type: "SyncComparisonFailed"; detail?: string }
+  | { type: "ServiceNotActive"; serviceStatus: EcsServiceStatus }
+  | { type: "SyncStatusUndetermined" };
+
+export type ApplicationDeployingReason =
+  | { type: "DeploymentInProgress"; detail?: string };
+
+export type ApplicationFailedReason =
+  | { type: "DeploymentFailed"; detail?: string };
+
 export type ApplicationStatusReason =
-  | { status: "Loading"; reason: string }
-  | { status: "Error"; reason: string }
-  | { status: "Deploying"; reason: string }
-  | { status: "Failed"; reason: string }
+  | { status: "Loading"; reason: ApplicationLoadingReason }
+  | { status: "Error"; reason: ApplicationErrorReason }
+  | { status: "Deploying"; reason: ApplicationDeployingReason }
+  | { status: "Failed"; reason: ApplicationFailedReason }
   | { status: "OutOfSync" }
   | { status: "InSync" };
 
@@ -171,50 +189,52 @@ export function getApplicationStatus(
   if (!isObservedApplication(application)) {
     return {
       status: "Loading",
-      reason: "Loading ECS service state...",
+      reason: { type: "ObservationPending" },
     };
   }
 
   if (application.service.status === "Loading") {
     return {
       status: "Loading",
-      reason: "Loading ECS service state...",
+      reason: { type: "ServiceStateLoading" },
     };
   }
 
   if (application.service.status === "Error") {
     return {
       status: "Error",
-      reason:
-        application.service.reason || "Failed to fetch ECS service state.",
+      reason: {
+        type: "ServiceStateUnavailable",
+        detail: application.service.reason,
+      },
     };
   }
 
   const service = application.service.value;
 
   if (application.sync.status === "Error") {
+    const detail =
+      application.sync.reason ||
+      (application.diff.status === "Error"
+        ? application.diff.reason
+        : undefined);
     return {
       status: "Error",
-      reason:
-        application.sync.reason ||
-        (application.diff.status === "Error"
-          ? application.diff.reason
-          : undefined) ||
-        "Failed to compare ECS and GitHub configuration.",
+      reason: { type: "SyncComparisonFailed", detail },
     };
   }
 
   if (!service) {
     return {
       status: "Error",
-      reason: "Failed to fetch ECS service state.",
+      reason: { type: "ServiceStateUnavailable" },
     };
   }
 
   if (service.status !== "ACTIVE") {
     return {
       status: "Error",
-      reason: `ECS service is ${service.status}. ecscd requires an ACTIVE service.`,
+      reason: { type: "ServiceNotActive", serviceStatus: service.status },
     };
   }
 
@@ -223,39 +243,44 @@ export function getApplicationStatus(
   if (currentDeployment?.rolloutState === "IN_PROGRESS") {
     return {
       status: "Deploying",
-      reason:
-        currentDeployment.rolloutStateReason || "Deployment is in progress.",
+      reason: {
+        type: "DeploymentInProgress",
+        detail: currentDeployment.rolloutStateReason || undefined,
+      },
     };
   }
 
   if (currentDeployment?.rolloutState === "FAILED") {
     return {
       status: "Failed",
-      reason:
-        currentDeployment.rolloutStateReason || "The last deployment failed.",
+      reason: {
+        type: "DeploymentFailed",
+        detail: currentDeployment.rolloutStateReason || undefined,
+      },
     };
   }
 
   if (application.diff.status === "Loading") {
     return {
       status: "Loading",
-      reason: "Loading configuration diff...",
+      reason: { type: "DiffLoading" },
     };
   }
 
   if (application.diff.status === "Error") {
     return {
       status: "Error",
-      reason:
-        application.diff.reason ||
-        "Failed to compare ECS and GitHub configuration.",
+      reason: {
+        type: "SyncComparisonFailed",
+        detail: application.diff.reason,
+      },
     };
   }
 
   if (application.sync.status === "Loading") {
     return {
       status: "Loading",
-      reason: "Loading sync status...",
+      reason: { type: "SyncStatusLoading" },
     };
   }
 
@@ -264,7 +289,7 @@ export function getApplicationStatus(
   if (!sync) {
     return {
       status: "Error",
-      reason: "Failed to determine sync status.",
+      reason: { type: "SyncStatusUndetermined" },
     };
   }
 
@@ -289,8 +314,8 @@ export function getApplicationDiffs(
   return application.diff.status === "Success" ? application.diff.value : [];
 }
 
-export function getApplicationDiffSummary(
+export function getApplicationDiffCount(
   application: ApplicationDomain | ObservedApplicationDomain,
-): string {
-  return `${getApplicationDiffs(application).length} changes`;
+): number {
+  return getApplicationDiffs(application).length;
 }
