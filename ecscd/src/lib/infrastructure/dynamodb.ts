@@ -179,6 +179,7 @@ export class DynamoDbApplicationRepository implements ApplicationRepository {
           ecs_service = :ecs_service,
           aws_region = :aws_region,
           aws_role_arn = :aws_role_arn,
+          aws_external_id = :aws_external_id,
           updated_at = :updated_at`,
         ExpressionAttributeValues: {
           ":item_type": "application",
@@ -189,6 +190,7 @@ export class DynamoDbApplicationRepository implements ApplicationRepository {
           ":ecs_service": application.ecsConfig.service,
           ":aws_region": application.awsConfig.region,
           ":aws_role_arn": application.awsConfig.roleArn,
+          ":aws_external_id": application.awsConfig.externalId,
           ":updated_at": application.updatedAt.toISOString(),
         },
         ConditionExpression: "attribute_exists(#name)",

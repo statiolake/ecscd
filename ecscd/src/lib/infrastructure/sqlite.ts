@@ -172,6 +172,7 @@ export class SqliteApplicationRepository implements ApplicationRepository {
             ecs_service = ?,
             aws_region = ?,
             aws_role_arn = ?,
+            aws_external_id = ?,
             updated_at = ?
           WHERE name = ?`,
         [
@@ -182,6 +183,7 @@ export class SqliteApplicationRepository implements ApplicationRepository {
           application.ecsConfig.service,
           application.awsConfig.region,
           application.awsConfig.roleArn,
+          application.awsConfig.externalId,
           application.updatedAt,
           application.name,
         ],
