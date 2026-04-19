@@ -132,12 +132,6 @@ export function createLoadingObserved(
   };
 }
 
-export function isObservedApplication(
-  application: ApplicationDomain | ObservedApplicationDomain,
-): application is ObservedApplicationDomain {
-  return "sync" in application && "diff" in application && "service" in application;
-}
-
 export interface ApplicationSyncDomain {
   status: ApplicationSyncStatus;
   lastSyncedAt?: Date;
@@ -165,12 +159,8 @@ export interface DiffDomain {
 }
 
 export function getApplicationCurrentDeployment(
-  application: ApplicationDomain | ObservedApplicationDomain,
+  application: ObservedApplicationDomain,
 ): ServiceDomain["deployments"][number] | null {
-  if (!isObservedApplication(application)) {
-    return null;
-  }
-
   if (application.service.status !== "Success") {
     return null;
   }
@@ -184,15 +174,8 @@ export function getApplicationCurrentDeployment(
 }
 
 export function getApplicationStatus(
-  application: ApplicationDomain | ObservedApplicationDomain,
+  application: ObservedApplicationDomain,
 ): ApplicationStatusReason {
-  if (!isObservedApplication(application)) {
-    return {
-      status: "Loading",
-      reason: { type: "ObservationPending" },
-    };
-  }
-
   if (application.service.status === "Loading") {
     return {
       status: "Loading",
@@ -305,17 +288,13 @@ export function getApplicationStatus(
 }
 
 export function getApplicationDiffs(
-  application: ApplicationDomain | ObservedApplicationDomain,
+  application: ObservedApplicationDomain,
 ): DiffDomain[] {
-  if (!isObservedApplication(application)) {
-    return [];
-  }
-
   return application.diff.status === "Success" ? application.diff.value : [];
 }
 
 export function getApplicationDiffCount(
-  application: ApplicationDomain | ObservedApplicationDomain,
+  application: ObservedApplicationDomain,
 ): number {
   return getApplicationDiffs(application).length;
 }

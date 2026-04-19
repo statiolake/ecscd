@@ -7,11 +7,11 @@ import {
     getApplicationStatusBadgeClass,
     getApplicationStatusDotClass,
     getApplicationStatusTextClass,
+    getApplicationViewStatus,
 } from "@/lib/application-status-ui";
 import {
-    ApplicationDomain,
     ApplicationStatus,
-    getApplicationStatus,
+    ObservedApplicationDomain,
 } from "@/lib/domain/application";
 import { cn } from "@/lib/utils";
 import { ReactNode, useEffect, useRef, useState } from "react";
@@ -154,9 +154,9 @@ function StatusReasonPopover({
 export function ApplicationStatusBadge({
   application,
 }: {
-  application: ApplicationDomain;
+  application: ObservedApplicationDomain | null;
 }) {
-  const applicationStatus = getApplicationStatus(application);
+  const applicationStatus = getApplicationViewStatus(application);
   const { status } = applicationStatus;
   const reason = formatApplicationStatusReason(applicationStatus);
   const label = formatApplicationStatus(status);
@@ -180,9 +180,9 @@ export function ApplicationStatusBadge({
 export function ApplicationStatusDot({
   application,
 }: {
-  application: ApplicationDomain;
+  application: ObservedApplicationDomain | null;
 }) {
-  const applicationStatus = getApplicationStatus(application);
+  const applicationStatus = getApplicationViewStatus(application);
   const { status } = applicationStatus;
   const reason = formatApplicationStatusReason(applicationStatus);
   const label = formatApplicationStatus(status);

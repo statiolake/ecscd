@@ -24,8 +24,8 @@ import {
   ApplicationDomain,
   ObservedApplicationDomain,
   ApplicationStatus,
-  getApplicationStatus,
 } from "@/lib/domain/application";
+import { getApplicationViewStatus } from "@/lib/application-status-ui";
 import { FilterDomain } from "@/lib/domain/filter";
 import {
   ArrowLeft,
@@ -134,8 +134,9 @@ export function ApplicationDashboard({
     const counts = new Map<ApplicationStatus, number>();
 
     for (const application of nameFilteredApplications) {
-      const status =
-        getApplicationStatus(getCachedApplication(application) || application).status;
+      const status = getApplicationViewStatus(
+        getCachedApplication(application),
+      ).status;
       counts.set(status, (counts.get(status) || 0) + 1);
     }
 
@@ -153,8 +154,9 @@ export function ApplicationDashboard({
 
     const selectedStatusSet = new Set(selectedStatuses);
     return nameFilteredApplications.filter((application) => {
-      const status =
-        getApplicationStatus(getCachedApplication(application) || application).status;
+      const status = getApplicationViewStatus(
+        getCachedApplication(application),
+      ).status;
       return selectedStatusSet.has(status);
     });
   }, [cacheVersion, nameFilteredApplications, selectedStatuses]);
@@ -166,10 +168,9 @@ export function ApplicationDashboard({
   const selectedApplication = selectedApplicationConfig
     ? getCachedApplication(selectedApplicationConfig)
     : null;
-  const displayApplication = selectedApplication || selectedApplicationConfig;
-  const displayApplicationStatus = displayApplication
-    ? getApplicationStatus(displayApplication).status
-    : "Loading";
+  const displayApplicationStatus = getApplicationViewStatus(
+    selectedApplication,
+  ).status;
   const isDetailRoute = selectedAppName !== null;
   const gitLinks = selectedApplicationConfig
     ? getGitLinks(selectedApplicationConfig)
@@ -309,7 +310,6 @@ export function ApplicationDashboard({
                     selectedStatuses
                   );
                   const cachedApplication = getCachedApplication(application);
-                  const displayApplication = cachedApplication || application;
 
                   return (
                     <div
@@ -322,7 +322,7 @@ export function ApplicationDashboard({
                     >
                       <Link href={href} className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 min-w-0">
-                          <ApplicationStatusDot application={displayApplication} />
+                          <ApplicationStatusDot application={cachedApplication} />
                           <div className="font-medium text-foreground truncate">
                             {application.name}
                           </div>
@@ -402,9 +402,7 @@ export function ApplicationDashboard({
               <h1 className="text-2xl font-semibold text-foreground">
                 {selectedApplicationConfig.name}
               </h1>
-              <ApplicationStatusBadge
-                application={selectedApplication || selectedApplicationConfig}
-              />
+              <ApplicationStatusBadge application={selectedApplication} />
             </div>
           }
           headerActions={
@@ -510,9 +508,7 @@ export function ApplicationDashboard({
                   />
                 ) : null}
                 {displayApplicationStatus === "Deploying" ? null : (
-                  <DiffViewer
-                    application={selectedApplication || selectedApplicationConfig}
-                  />
+                  <DiffViewer application={selectedApplication} />
                 )}
               </div>
             </>

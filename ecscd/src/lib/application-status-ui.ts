@@ -5,7 +5,23 @@ import {
   ApplicationLoadingReason,
   ApplicationStatus,
   ApplicationStatusReason,
+  ObservedApplicationDomain,
+  getApplicationStatus,
 } from "@/lib/domain/application";
+
+// 観測が始まっていない ApplicationDomain をどう解釈するかは UI/query 側の関心。
+// domain の getApplicationStatus は observed のみを受け、未観測の扱いはここで決める。
+export function getApplicationViewStatus(
+  observed: ObservedApplicationDomain | null,
+): ApplicationStatusReason {
+  if (!observed) {
+    return {
+      status: "Loading",
+      reason: { type: "ObservationPending" },
+    };
+  }
+  return getApplicationStatus(observed);
+}
 
 export function formatApplicationStatus(status: ApplicationStatus) {
   switch (status) {

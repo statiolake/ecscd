@@ -2,20 +2,20 @@
 
 import { Button } from '@/components/ui/button';
 import {
-  ApplicationDomain,
+  ObservedApplicationDomain,
   getApplicationDiffCount,
   getApplicationDiffs,
-  getApplicationStatus,
 } from '@/lib/domain/application';
 import {
   formatApplicationStatusReason,
   formatDiffSummary,
+  getApplicationViewStatus,
 } from '@/lib/application-status-ui';
 import { ChevronDown, ChevronRight, Edit3, Minus, Play, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 interface DiffViewerProps {
-  application: ApplicationDomain;
+  application: ObservedApplicationDomain | null;
   onSync?: () => void;
   isLoading?: boolean;
 }
@@ -26,9 +26,11 @@ export function DiffViewer({
   isLoading,
 }: DiffViewerProps) {
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const applicationStatus = getApplicationStatus(application);
-  const diffs = getApplicationDiffs(application);
-  const summary = formatDiffSummary(getApplicationDiffCount(application));
+  const applicationStatus = getApplicationViewStatus(application);
+  const diffs = application ? getApplicationDiffs(application) : [];
+  const summary = formatDiffSummary(
+    application ? getApplicationDiffCount(application) : 0,
+  );
   const error =
     applicationStatus.status === "Error"
       ? formatApplicationStatusReason(applicationStatus)
