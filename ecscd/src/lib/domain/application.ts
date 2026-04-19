@@ -31,16 +31,16 @@ export type ApplicationLoadingReason =
   | { type: "SyncStatusLoading" };
 
 export type ApplicationErrorReason =
-  | { type: "ServiceStateUnavailable"; detail?: string }
-  | { type: "SyncComparisonFailed"; detail?: string }
+  | { type: "ServiceStateUnavailable"; failure?: ObservationFailure }
+  | { type: "SyncComparisonFailed"; failure?: ObservationFailure }
   | { type: "ServiceNotActive"; serviceStatus: EcsServiceStatus }
   | { type: "SyncStatusUndetermined" };
 
 export type ApplicationDeployingReason =
-  | { type: "DeploymentInProgress"; detail?: string };
+  | { type: "DeploymentInProgress"; rolloutStateReason?: string };
 
 export type ApplicationFailedReason =
-  | { type: "DeploymentFailed"; detail?: string };
+  | { type: "DeploymentFailed"; rolloutStateReason?: string };
 
 export type ApplicationStatusReason =
   | { status: "Loading"; reason: ApplicationLoadingReason }
@@ -325,7 +325,7 @@ export function getApplicationStatus(
       status: "Error",
       reason: {
         type: "ServiceStateUnavailable",
-        detail: formatObservationFailure(application.service.reason),
+        failure: application.service.reason,
       },
     };
   }
@@ -333,14 +333,12 @@ export function getApplicationStatus(
   const service = application.service.value;
 
   if (application.sync.status === "Error") {
-    const detail =
-      formatObservationFailure(application.sync.reason) ||
-      (application.diff.status === "Error"
-        ? formatObservationFailure(application.diff.reason)
-        : undefined);
+    const failure =
+      application.sync.reason ??
+      (application.diff.status === "Error" ? application.diff.reason : undefined);
     return {
       status: "Error",
-      reason: { type: "SyncComparisonFailed", detail },
+      reason: { type: "SyncComparisonFailed", failure },
     };
   }
 
@@ -365,7 +363,7 @@ export function getApplicationStatus(
       status: "Deploying",
       reason: {
         type: "DeploymentInProgress",
-        detail: currentDeployment.rolloutStateReason || undefined,
+        rolloutStateReason: currentDeployment.rolloutStateReason || undefined,
       },
     };
   }
@@ -375,7 +373,7 @@ export function getApplicationStatus(
       status: "Failed",
       reason: {
         type: "DeploymentFailed",
-        detail: currentDeployment.rolloutStateReason || undefined,
+        rolloutStateReason: currentDeployment.rolloutStateReason || undefined,
       },
     };
   }
@@ -392,7 +390,7 @@ export function getApplicationStatus(
       status: "Error",
       reason: {
         type: "SyncComparisonFailed",
-        detail: formatObservationFailure(application.diff.reason),
+        failure: application.diff.reason,
       },
     };
   }
@@ -436,23 +434,3 @@ export function getApplicationDiffCount(
   return getApplicationDiffs(application).length;
 }
 
-function formatObservationFailure(
-  failure: ObservationFailure,
-): string | undefined {
-  switch (failure.type) {
-    case "GitSourceUnavailable":
-      return `Failed to fetch task definition from GitHub: ${failure.detail}`;
-    case "InvalidGitTaskDefinition":
-      return `Invalid task definition in GitHub: ${failure.detail}`;
-    case "GitTaskDefinitionNotFound":
-      return `Task definition file not found at "${failure.path}".`;
-    case "CurrentTaskDefinitionUnavailable":
-      return (
-        failure.detail || "Current ECS task definition is unavailable."
-      );
-    case "EcsServiceUnavailable":
-      return failure.detail || "ECS service state is unavailable.";
-    case "Unknown":
-      return failure.detail;
-  }
-}

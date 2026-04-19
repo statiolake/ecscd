@@ -5,6 +5,7 @@ import {
   ApplicationLoadingReason,
   ApplicationStatus,
   ApplicationStatusReason,
+  ObservationFailure,
   ObservedApplicationDomain,
   getApplicationStatus,
 } from "@/lib/domain/application";
@@ -75,10 +76,14 @@ function formatLoadingReason(reason: ApplicationLoadingReason): string {
 function formatErrorReason(reason: ApplicationErrorReason): string {
   switch (reason.type) {
     case "ServiceStateUnavailable":
-      return reason.detail || "Failed to fetch ECS service state.";
+      return (
+        (reason.failure && formatObservationFailure(reason.failure)) ||
+        "Failed to fetch ECS service state."
+      );
     case "SyncComparisonFailed":
       return (
-        reason.detail || "Failed to compare ECS and GitHub configuration."
+        (reason.failure && formatObservationFailure(reason.failure)) ||
+        "Failed to compare ECS and GitHub configuration."
       );
     case "ServiceNotActive":
       return `ECS service is ${reason.serviceStatus}. ecscd requires an ACTIVE service.`;
@@ -90,14 +95,33 @@ function formatErrorReason(reason: ApplicationErrorReason): string {
 function formatDeployingReason(reason: ApplicationDeployingReason): string {
   switch (reason.type) {
     case "DeploymentInProgress":
-      return reason.detail || "Deployment is in progress.";
+      return reason.rolloutStateReason || "Deployment is in progress.";
   }
 }
 
 function formatFailedReason(reason: ApplicationFailedReason): string {
   switch (reason.type) {
     case "DeploymentFailed":
-      return reason.detail || "The last deployment failed.";
+      return reason.rolloutStateReason || "The last deployment failed.";
+  }
+}
+
+function formatObservationFailure(
+  failure: ObservationFailure,
+): string | undefined {
+  switch (failure.type) {
+    case "GitSourceUnavailable":
+      return `Failed to fetch task definition from GitHub: ${failure.detail}`;
+    case "InvalidGitTaskDefinition":
+      return `Invalid task definition in GitHub: ${failure.detail}`;
+    case "GitTaskDefinitionNotFound":
+      return `Task definition file not found at "${failure.path}".`;
+    case "CurrentTaskDefinitionUnavailable":
+      return failure.detail || "Current ECS task definition is unavailable.";
+    case "EcsServiceUnavailable":
+      return failure.detail || "ECS service state is unavailable.";
+    case "Unknown":
+      return failure.detail;
   }
 }
 
