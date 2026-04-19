@@ -6,7 +6,7 @@ function formatGitError(error: GitTaskDefinitionError): string {
   switch (error.type) {
     case "InvalidRepositoryUrl":
       return `Invalid GitHub repository URL: "${error.url}"`;
-    case "RepositoryNotFound":
+    case "RepositoryUnavailable":
       return `GitHub repository ${error.owner}/${error.repo} not found or not accessible.`;
     case "CommitNotFound":
       return `No commits found on branch "${error.branch}".`;

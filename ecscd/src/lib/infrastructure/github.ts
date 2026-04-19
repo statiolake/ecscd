@@ -42,7 +42,7 @@ export class GitHub implements IGithub {
       if (isOctokitStatus(error, 404)) {
         return {
           status: "Error",
-          error: { type: "RepositoryNotFound", owner, repo },
+          error: { type: "RepositoryUnavailable", owner, repo },
         };
       }
       return toFetchError(error);

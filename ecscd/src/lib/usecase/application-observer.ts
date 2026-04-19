@@ -13,20 +13,22 @@ import {
   GitTaskDefinitionError,
   IGithub,
 } from "./port/github";
-import { ApplicationObserver } from "../repository/application-observer";
-import { ServiceStateProvider } from "../repository/service-state-provider";
+import { ApplicationObserver } from "./port/application-observer";
+import { Clock } from "./port/clock";
+import { ServiceStateProvider } from "./port/service-state-provider";
 
 export class DefaultApplicationObserver implements ApplicationObserver {
   constructor(
     private serviceStateProvider: ServiceStateProvider,
     private aws: IAws,
     private github: IGithub,
+    private clock: Clock,
   ) {}
 
   async observe(
     application: ApplicationDomain,
   ): Promise<ObservedApplicationDomain> {
-    const observedAt = new Date();
+    const observedAt = this.clock.now();
     const service = await this.serviceStateProvider.fetchService(application);
     const base: ObservedApplicationDomain = {
       ...createLoadingObserved(application, observedAt),
@@ -56,9 +58,9 @@ export class DefaultApplicationObserver implements ApplicationObserver {
       return withDiffFailure(base, toObservationFailure(desiredResult.error));
     }
 
-    let current;
+    let currentResult;
     try {
-      current = await this.aws.describeTaskDefinition(
+      currentResult = await this.aws.describeTaskDefinition(
         application.awsConfig,
         currentArn,
       );
@@ -68,15 +70,23 @@ export class DefaultApplicationObserver implements ApplicationObserver {
         detail: toErrorMessage(error),
       });
     }
-    if (!current) {
+    if (currentResult.status === "NotFound") {
       return withDiffFailure(base, {
         type: "CurrentTaskDefinitionUnavailable",
         detail: "Current task definition not found.",
       });
     }
+    if (currentResult.status === "Invalid") {
+      return withDiffFailure(base, {
+        type: "CurrentTaskDefinitionUnavailable",
+        detail: `Current task definition (${currentArn}) failed validation: ${currentResult.errors
+          .map((error) => error.type)
+          .join(", ")}`,
+      });
+    }
 
     const target = desiredToComparable(desiredResult.taskDefinition);
-    const deployments = compareTaskDefinitions(current, target);
+    const deployments = compareTaskDefinitions(currentResult.taskDefinition, target);
 
     return {
       ...base,
@@ -128,7 +138,7 @@ function toObservationFailure(
         type: "GitSourceUnavailable",
         detail: `Invalid GitHub repository URL: "${error.url}"`,
       };
-    case "RepositoryNotFound":
+    case "RepositoryUnavailable":
       return {
         type: "GitSourceUnavailable",
         detail: `GitHub repository ${error.owner}/${error.repo} not found or not accessible.`,

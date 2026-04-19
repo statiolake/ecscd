@@ -51,14 +51,15 @@ function createRepositories(): {
 const { applications: ar, filters: fr } = createRepositories();
 const aws = new AWS();
 const github = new GitHub(process.env.GITHUB_TOKEN || "");
+const clock = new SystemClock();
+const idGenerator = new UuidGenerator();
 const observer = new DefaultApplicationObserver(
   new AwsServiceStateProvider(aws),
   aws,
   github,
+  clock,
 );
-const clock = new SystemClock();
-const idGenerator = new UuidGenerator();
 
-export const au: IApplicationUsecase = new ApplicationUsecase(ar, observer);
+export const au: IApplicationUsecase = new ApplicationUsecase(ar, observer, clock);
 export const du = new DeploymentUsecase(ar, aws, github);
 export const fu = new FilterUsecase(fr, clock, idGenerator);

@@ -1,9 +1,29 @@
-import { asComparable, TaskDefinitionFields } from "../task-definition";
+import {
+  ComparableTaskDefinition,
+  TaskDefinitionFields,
+  validateComparable,
+} from "../task-definition";
 import { compareTaskDefinitions } from "../task-definition-diff";
+
+// Test helper: construct a ComparableTaskDefinition via the real validator so the
+// tests exercise the same runtime check the production code uses.
+function buildComparable(
+  fields: TaskDefinitionFields,
+): ComparableTaskDefinition {
+  const result = validateComparable(fields);
+  if (!result.ok) {
+    throw new Error(
+      `fixture is not a valid ComparableTaskDefinition: ${result.errors
+        .map((error) => error.type)
+        .join(", ")}`,
+    );
+  }
+  return result.spec;
+}
 
 describe("compareTaskDefinitions", () => {
   it("produces Modified diffs for values that differ between comparable task definitions", () => {
-    const current: TaskDefinitionFields = {
+    const current = buildComparable({
       family: "web-app",
       networkMode: "awsvpc",
       cpu: "256",
@@ -16,8 +36,8 @@ describe("compareTaskDefinitions", () => {
         },
       ],
       tags: [{ key: "Environment", value: "dev" }],
-    };
-    const target: TaskDefinitionFields = {
+    });
+    const target = buildComparable({
       family: "web-app-v2",
       networkMode: "bridge",
       cpu: "512",
@@ -30,9 +50,9 @@ describe("compareTaskDefinitions", () => {
         },
       ],
       tags: [{ key: "Environment", value: "prod" }],
-    };
+    });
 
-    const diffs = compareTaskDefinitions(asComparable(current), asComparable(target));
+    const diffs = compareTaskDefinitions(current, target);
 
     expect(diffs).toEqual(
       expect.arrayContaining([
@@ -64,18 +84,18 @@ describe("compareTaskDefinitions", () => {
   });
 
   it("classifies non-matching container / volume entries as Added and Removed", () => {
-    const current: TaskDefinitionFields = {
+    const current = buildComparable({
       family: "svc",
       containerDefinitions: [{ name: "old-container", image: "nginx:1.20" }],
       volumes: [{ name: "old-volume" }],
-    };
-    const target: TaskDefinitionFields = {
+    });
+    const target = buildComparable({
       family: "svc",
       containerDefinitions: [{ name: "new-container", image: "nginx:1.21" }],
       volumes: [{ name: "new-volume" }],
-    };
+    });
 
-    const diffs = compareTaskDefinitions(asComparable(current), asComparable(target));
+    const diffs = compareTaskDefinitions(current, target);
 
     expect(diffs).toEqual(
       expect.arrayContaining([
@@ -108,7 +128,7 @@ describe("compareTaskDefinitions", () => {
   });
 
   it("returns no diffs when both sides are structurally equal", () => {
-    const same: TaskDefinitionFields = {
+    const same = buildComparable({
       family: "svc",
       cpu: "256",
       memory: "512",
@@ -119,9 +139,9 @@ describe("compareTaskDefinitions", () => {
           environment: [{ name: "NODE_ENV", value: "production" }],
         },
       ],
-    };
+    });
 
-    const diffs = compareTaskDefinitions(asComparable(same), asComparable(same));
+    const diffs = compareTaskDefinitions(same, same);
 
     expect(diffs).toEqual([]);
   });

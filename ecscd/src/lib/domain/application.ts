@@ -287,7 +287,7 @@ export function updateSettings(
 
 export function createLoadingObserved(
   application: ApplicationDomain,
-  observedAt: Date = new Date(),
+  observedAt: Date,
 ): ObservedApplicationDomain {
   return {
     ...application,

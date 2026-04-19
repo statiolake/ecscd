@@ -9,7 +9,8 @@ import {
   updateSettings as updateApplicationSettings,
 } from "../domain/application";
 import { ApplicationRepository } from "../repository/application";
-import { ApplicationObserver } from "../repository/application-observer";
+import { ApplicationObserver } from "./port/application-observer";
+import { Clock } from "./port/clock";
 
 export interface CreateApplicationCommand {
   name: string;
@@ -59,6 +60,7 @@ export class ApplicationUsecase implements IApplicationUsecase {
   constructor(
     private applicationRepository: ApplicationRepository,
     private applicationObserver: ApplicationObserver,
+    private clock: Clock,
   ) {}
 
   async observeApplication(
@@ -87,7 +89,7 @@ export class ApplicationUsecase implements IApplicationUsecase {
       gitConfig: command.gitConfig,
       ecsConfig: command.ecsConfig,
       awsConfig: command.awsConfig,
-      now: new Date(),
+      now: this.clock.now(),
     });
     if (!validation.ok) {
       return { type: "Invalid", errors: validation.errors };
@@ -115,7 +117,7 @@ export class ApplicationUsecase implements IApplicationUsecase {
       gitConfig: command.gitConfig,
       ecsConfig: command.ecsConfig,
       awsConfig: command.awsConfig,
-      now: new Date(),
+      now: this.clock.now(),
     });
     if (!validation.ok) {
       return { type: "Invalid", errors: validation.errors };

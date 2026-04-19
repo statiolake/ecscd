@@ -4,7 +4,7 @@ import {
   ResourceResult,
   ServiceDomain,
 } from "../domain/application";
-import { ServiceStateProvider } from "../repository/service-state-provider";
+import { ServiceStateProvider } from "../usecase/port/service-state-provider";
 import { IAws } from "../usecase/port/aws";
 
 export class AwsServiceStateProvider implements ServiceStateProvider {

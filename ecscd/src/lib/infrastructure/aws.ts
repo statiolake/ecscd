@@ -20,7 +20,10 @@ import {
   ComparableTaskDefinition,
   DesiredTaskDefinitionSpec,
 } from "../domain/task-definition";
-import { IAws } from "../usecase/port/aws";
+import {
+  DescribeTaskDefinitionResult,
+  IAws,
+} from "../usecase/port/aws";
 import { toComparableTaskDefinition } from "./task-definition-normalizer";
 
 import {
@@ -158,26 +161,22 @@ export class AWS implements IAws {
   async describeTaskDefinition(
     awsConfig: ApplicationDomain["awsConfig"],
     taskDefinitionArn: string
-  ): Promise<ComparableTaskDefinition | undefined> {
+  ): Promise<DescribeTaskDefinitionResult> {
     const client = await this.createEcsClient(awsConfig);
     const command = new DescribeTaskDefinitionCommand({
       taskDefinition: taskDefinitionArn,
     });
     const response = await client.send(command);
     if (!response.taskDefinition) {
-      return undefined;
+      return { status: "NotFound" };
     }
     const validation = toComparableTaskDefinition(
       response.taskDefinition as unknown as Record<string, unknown>,
     );
     if (!validation.ok) {
-      throw new Error(
-        `Current task definition ${taskDefinitionArn} failed validation: ${validation.errors
-          .map((e) => e.type)
-          .join(", ")}`,
-      );
+      return { status: "Invalid", errors: validation.errors };
     }
-    return validation.spec;
+    return { status: "Success", taskDefinition: validation.spec };
   }
 
   async registerTaskDefinition(

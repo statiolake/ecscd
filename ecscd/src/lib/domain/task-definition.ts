@@ -75,12 +75,6 @@ export function validateComparable(
   return { ok: true, spec: fields as ComparableTaskDefinition };
 }
 
-export function asComparable(
-  fields: TaskDefinitionFields,
-): ComparableTaskDefinition {
-  return fields as ComparableTaskDefinition;
-}
-
 // ユーザーが宣言した desired spec は AWS 生成フィールドを含まない前提なので、
 // そのまま比較対象としても解釈できる。branded type 上の変換のみ。
 export function desiredToComparable(

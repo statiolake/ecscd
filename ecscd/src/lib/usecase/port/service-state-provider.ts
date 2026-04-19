@@ -3,7 +3,7 @@ import {
   ObservationFailure,
   ResourceResult,
   ServiceDomain,
-} from "../domain/application";
+} from "../../domain/application";
 
 export interface ServiceStateProvider {
   fetchService(
