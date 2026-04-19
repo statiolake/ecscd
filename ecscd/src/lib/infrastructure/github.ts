@@ -3,10 +3,7 @@ import {
   GitTaskDefinitionSource,
   parseGitHubRepoUrl,
 } from "../domain/application";
-import {
-  TaskDefinitionValidationError,
-  validateDesired,
-} from "../domain/task-definition";
+import { TaskDefinitionValidationError } from "../domain/task-definition";
 import {
   GitTaskDefinitionResult,
   IGithub,
@@ -136,10 +133,9 @@ function parseTaskDefinition(content: string): GitTaskDefinitionResult {
     };
   }
 
-  const normalized = toDesiredTaskDefinitionSpec(
+  const validation = toDesiredTaskDefinitionSpec(
     parsed as Record<string, unknown>,
   );
-  const validation = validateDesired(normalized);
   if (!validation.ok) {
     return {
       status: "Error",

@@ -54,12 +54,6 @@ export function validateDesired(
   return { ok: true, spec: fields as DesiredTaskDefinitionSpec };
 }
 
-export function asDesired(
-  fields: TaskDefinitionFields,
-): DesiredTaskDefinitionSpec {
-  return fields as DesiredTaskDefinitionSpec;
-}
-
 export function asComparable(
   fields: TaskDefinitionFields,
 ): ComparableTaskDefinition {

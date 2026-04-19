@@ -1,9 +1,9 @@
 import {
   asComparable,
-  asDesired,
   ComparableTaskDefinition,
-  DesiredTaskDefinitionSpec,
   TaskDefinitionFields,
+  ValidateDesiredResult,
+  validateDesired,
 } from "../domain/task-definition";
 
 const AWS_GENERATED_TASK_DEFINITION_FIELDS = [
@@ -30,8 +30,8 @@ function stripAwsGeneratedFields(
 
 export function toDesiredTaskDefinitionSpec(
   raw: Record<string, unknown>,
-): DesiredTaskDefinitionSpec {
-  return asDesired(stripAwsGeneratedFields(raw));
+): ValidateDesiredResult {
+  return validateDesired(stripAwsGeneratedFields(raw));
 }
 
 export function toComparableTaskDefinition(
