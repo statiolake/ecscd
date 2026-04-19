@@ -62,19 +62,23 @@ function createApplicationErrorState(
   config: ApplicationDomain,
   reason: string
 ): ObservedApplicationDomain {
+  const failure = {
+    type: "Unknown" as const,
+    detail: reason,
+  };
   return {
     ...config,
     sync: {
       status: "Error",
-      reason,
+      reason: failure,
     },
     service: {
       status: "Error",
-      reason,
+      reason: failure,
     },
     diff: {
       status: "Error",
-      reason,
+      reason: failure,
     },
     observedAt: new Date(),
   };

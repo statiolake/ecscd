@@ -1,6 +1,7 @@
 import {
   ApplicationDomain,
   ApplicationSyncStatus,
+  ObservationFailure,
   ObservedApplicationDomain,
   ResourceResult,
   createLoadingObserved,
@@ -42,14 +43,17 @@ export class DefaultApplicationObserver implements ApplicationObserver {
 
     const currentArn = service.value.taskDefinition;
     if (!currentArn) {
-      return withDiffError(base, "Current task definition ARN not found.");
+      return withDiffFailure(base, {
+        type: "CurrentTaskDefinitionUnavailable",
+        detail: "Current task definition ARN not found.",
+      });
     }
 
     const desiredResult = await this.github.getTaskDefinition(
       application.gitConfig,
     );
     if (desiredResult.status === "Error") {
-      return withDiffError(base, formatGitTaskDefinitionError(desiredResult.error));
+      return withDiffFailure(base, toObservationFailure(desiredResult.error));
     }
 
     let current;
@@ -59,10 +63,16 @@ export class DefaultApplicationObserver implements ApplicationObserver {
         currentArn,
       );
     } catch (error) {
-      return withDiffError(base, toErrorMessage(error));
+      return withDiffFailure(base, {
+        type: "CurrentTaskDefinitionUnavailable",
+        detail: toErrorMessage(error),
+      });
     }
     if (!current) {
-      return withDiffError(base, "Current task definition not found.");
+      return withDiffFailure(base, {
+        type: "CurrentTaskDefinitionUnavailable",
+        detail: "Current task definition not found.",
+      });
     }
 
     const target = desiredToComparable(desiredResult.taskDefinition);
@@ -85,7 +95,10 @@ export class DefaultApplicationObserver implements ApplicationObserver {
 function toSyncResource(
   status: ApplicationSyncStatus,
   lastSyncedAt: Date | undefined,
-): ResourceResult<{ status: ApplicationSyncStatus; lastSyncedAt?: Date }> {
+): ResourceResult<
+  { status: ApplicationSyncStatus; lastSyncedAt?: Date },
+  ObservationFailure
+> {
   return {
     status: "Success",
     value: {
@@ -95,29 +108,37 @@ function toSyncResource(
   };
 }
 
-function withDiffError(
+function withDiffFailure(
   base: ObservedApplicationDomain,
-  reason: string,
+  failure: ObservationFailure,
 ): ObservedApplicationDomain {
   return {
     ...base,
-    sync: { status: "Error", reason },
-    diff: { status: "Error", reason },
+    sync: { status: "Error", reason: failure },
+    diff: { status: "Error", reason: failure },
   };
 }
 
-function formatGitTaskDefinitionError(error: GitTaskDefinitionError): string {
+function toObservationFailure(
+  error: GitTaskDefinitionError,
+): ObservationFailure {
   switch (error.type) {
     case "InvalidRepositoryUrl":
-      return `Invalid GitHub repository URL: "${error.url}"`;
+      return {
+        type: "GitSourceUnavailable",
+        detail: `Invalid GitHub repository URL: "${error.url}"`,
+      };
     case "CommitNotFound":
-      return `No commits found on branch "${error.branch}".`;
+      return {
+        type: "GitSourceUnavailable",
+        detail: `No commits found on branch "${error.branch}".`,
+      };
     case "FileNotFound":
-      return `Task definition file not found at "${error.path}".`;
+      return { type: "GitTaskDefinitionNotFound", path: error.path };
     case "InvalidTaskDefinition":
-      return `Invalid task definition: ${error.reason}`;
+      return { type: "InvalidGitTaskDefinition", detail: error.reason };
     case "FetchFailed":
-      return `Failed to fetch task definition from GitHub: ${error.reason}`;
+      return { type: "GitSourceUnavailable", detail: error.reason };
   }
 }
 

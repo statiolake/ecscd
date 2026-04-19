@@ -76,10 +76,18 @@ export interface ApplicationDomain {
   updatedAt: Date;
 }
 
+export type ObservationFailure =
+  | { type: "GitSourceUnavailable"; detail: string }
+  | { type: "InvalidGitTaskDefinition"; detail: string }
+  | { type: "GitTaskDefinitionNotFound"; path: string }
+  | { type: "CurrentTaskDefinitionUnavailable"; detail?: string }
+  | { type: "EcsServiceUnavailable"; detail?: string }
+  | { type: "Unknown"; detail: string };
+
 export interface ObservedApplicationDomain extends ApplicationDomain {
-  sync: ResourceResult<ApplicationSyncDomain>;
-  diff: ResourceResult<DiffDomain[]>;
-  service: ResourceResult<ServiceDomain>;
+  sync: ResourceResult<ApplicationSyncDomain, ObservationFailure>;
+  diff: ResourceResult<DiffDomain[], ObservationFailure>;
+  service: ResourceResult<ServiceDomain, ObservationFailure>;
   observedAt: Date;
 }
 
@@ -98,12 +106,12 @@ export interface UpdateApplicationSettingsInput {
   now: Date;
 }
 
-export type ResourceResult<T> =
+export type ResourceResult<T, E = string> =
   | { status: "Loading" }
   | { status: "Success"; value: T }
-  | { status: "Error"; reason: string };
+  | { status: "Error"; reason: E };
 
-export function createLoadingResource<T>(): ResourceResult<T> {
+export function createLoadingResource<T, E = string>(): ResourceResult<T, E> {
   return { status: "Loading" };
 }
 
@@ -288,7 +296,7 @@ export function getApplicationStatus(
       status: "Error",
       reason: {
         type: "ServiceStateUnavailable",
-        detail: application.service.reason,
+        detail: formatObservationFailure(application.service.reason),
       },
     };
   }
@@ -297,9 +305,9 @@ export function getApplicationStatus(
 
   if (application.sync.status === "Error") {
     const detail =
-      application.sync.reason ||
+      formatObservationFailure(application.sync.reason) ||
       (application.diff.status === "Error"
-        ? application.diff.reason
+        ? formatObservationFailure(application.diff.reason)
         : undefined);
     return {
       status: "Error",
@@ -355,7 +363,7 @@ export function getApplicationStatus(
       status: "Error",
       reason: {
         type: "SyncComparisonFailed",
-        detail: application.diff.reason,
+        detail: formatObservationFailure(application.diff.reason),
       },
     };
   }
@@ -397,4 +405,25 @@ export function getApplicationDiffCount(
   application: ObservedApplicationDomain,
 ): number {
   return getApplicationDiffs(application).length;
+}
+
+function formatObservationFailure(
+  failure: ObservationFailure,
+): string | undefined {
+  switch (failure.type) {
+    case "GitSourceUnavailable":
+      return `Failed to fetch task definition from GitHub: ${failure.detail}`;
+    case "InvalidGitTaskDefinition":
+      return `Invalid task definition in GitHub: ${failure.detail}`;
+    case "GitTaskDefinitionNotFound":
+      return `Task definition file not found at "${failure.path}".`;
+    case "CurrentTaskDefinitionUnavailable":
+      return (
+        failure.detail || "Current ECS task definition is unavailable."
+      );
+    case "EcsServiceUnavailable":
+      return failure.detail || "ECS service state is unavailable.";
+    case "Unknown":
+      return failure.detail;
+  }
 }

@@ -1,5 +1,6 @@
 import {
   ApplicationDomain,
+  ObservationFailure,
   ResourceResult,
   ServiceDomain,
 } from "../domain/application";
@@ -11,7 +12,7 @@ export class AwsServiceStateProvider implements ServiceStateProvider {
 
   async fetchService(
     application: ApplicationDomain,
-  ): Promise<ResourceResult<ServiceDomain>> {
+  ): Promise<ResourceResult<ServiceDomain, ObservationFailure>> {
     try {
       const ecsResponse = await this.aws.describeServices(
         application.awsConfig,
@@ -21,7 +22,10 @@ export class AwsServiceStateProvider implements ServiceStateProvider {
       if (!ecsResponse) {
         return {
           status: "Error",
-          reason: "Failed to fetch ECS service state.",
+          reason: {
+            type: "EcsServiceUnavailable",
+            detail: "ECS service not found.",
+          },
         };
       }
 
@@ -33,10 +37,13 @@ export class AwsServiceStateProvider implements ServiceStateProvider {
       console.warn(`Error fetching ECS service for ${application.name}:`, error);
       return {
         status: "Error",
-        reason:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch ECS service state.",
+        reason: {
+          type: "EcsServiceUnavailable",
+          detail:
+            error instanceof Error
+              ? error.message
+              : "Failed to fetch ECS service state.",
+        },
       };
     }
   }
