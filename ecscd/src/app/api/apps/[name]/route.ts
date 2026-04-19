@@ -65,6 +65,11 @@ export async function PUT(
           { error: "Application not found" },
           { status: 404 },
         );
+      case "Invalid":
+        return NextResponse.json(
+          { error: "Validation failed", details: result.errors },
+          { status: 400 },
+        );
     }
   } catch (error) {
     console.error("Error updating application:", error);

@@ -107,27 +107,115 @@ export function createLoadingResource<T>(): ResourceResult<T> {
   return { status: "Loading" };
 }
 
-export function create(input: CreateApplicationInput): ApplicationDomain {
+export type ApplicationValidationErrorField =
+  | "name"
+  | "git.repo"
+  | "git.branch"
+  | "git.path"
+  | "ecs.cluster"
+  | "ecs.service"
+  | "aws.externalId";
+
+export type ApplicationValidationErrorKind = "Empty" | "InvalidUrl";
+
+export interface ApplicationValidationError {
+  field: ApplicationValidationErrorField;
+  kind: ApplicationValidationErrorKind;
+}
+
+export type CreateApplicationDomainResult =
+  | { ok: true; application: ApplicationDomain }
+  | { ok: false; errors: ApplicationValidationError[] };
+
+export type UpdateApplicationDomainResult =
+  | { ok: true; application: ApplicationDomain }
+  | { ok: false; errors: ApplicationValidationError[] };
+
+const GITHUB_REPO_URL_PATTERN =
+  /^https?:\/\/github\.com\/[^/\s]+\/[^/\s.]+(?:\.git)?\/?$/;
+
+function validateGitConfig(
+  gitConfig: GitTaskDefinitionSource,
+): ApplicationValidationError[] {
+  const errors: ApplicationValidationError[] = [];
+  if (!gitConfig.repo) {
+    errors.push({ field: "git.repo", kind: "Empty" });
+  } else if (!GITHUB_REPO_URL_PATTERN.test(gitConfig.repo)) {
+    errors.push({ field: "git.repo", kind: "InvalidUrl" });
+  }
+  if (!gitConfig.branch) errors.push({ field: "git.branch", kind: "Empty" });
+  if (!gitConfig.path) errors.push({ field: "git.path", kind: "Empty" });
+  return errors;
+}
+
+function validateEcsConfig(
+  ecsConfig: EcsServiceTarget,
+): ApplicationValidationError[] {
+  const errors: ApplicationValidationError[] = [];
+  if (!ecsConfig.cluster) errors.push({ field: "ecs.cluster", kind: "Empty" });
+  if (!ecsConfig.service) errors.push({ field: "ecs.service", kind: "Empty" });
+  return errors;
+}
+
+function validateAwsConfig(
+  awsConfig: AwsAccessProfile,
+): ApplicationValidationError[] {
+  const errors: ApplicationValidationError[] = [];
+  if (!awsConfig.externalId) {
+    errors.push({ field: "aws.externalId", kind: "Empty" });
+  }
+  return errors;
+}
+
+export function create(
+  input: CreateApplicationInput,
+): CreateApplicationDomainResult {
+  const errors: ApplicationValidationError[] = [];
+  if (!input.name) {
+    errors.push({ field: "name", kind: "Empty" });
+  }
+  errors.push(
+    ...validateGitConfig(input.gitConfig),
+    ...validateEcsConfig(input.ecsConfig),
+    ...validateAwsConfig(input.awsConfig),
+  );
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
   return {
-    name: input.name,
-    gitConfig: input.gitConfig,
-    ecsConfig: input.ecsConfig,
-    awsConfig: input.awsConfig,
-    createdAt: input.now,
-    updatedAt: input.now,
+    ok: true,
+    application: {
+      name: input.name,
+      gitConfig: input.gitConfig,
+      ecsConfig: input.ecsConfig,
+      awsConfig: input.awsConfig,
+      createdAt: input.now,
+      updatedAt: input.now,
+    },
   };
 }
 
 export function updateSettings(
   application: ApplicationDomain,
   input: UpdateApplicationSettingsInput,
-): ApplicationDomain {
+): UpdateApplicationDomainResult {
+  const errors: ApplicationValidationError[] = [
+    ...validateGitConfig(input.gitConfig),
+    ...validateEcsConfig(input.ecsConfig),
+    ...validateAwsConfig(input.awsConfig),
+  ];
+  if (errors.length > 0) {
+    return { ok: false, errors };
+  }
   return {
-    ...application,
-    gitConfig: input.gitConfig,
-    ecsConfig: input.ecsConfig,
-    awsConfig: input.awsConfig,
-    updatedAt: input.now,
+    ok: true,
+    application: {
+      ...application,
+      gitConfig: input.gitConfig,
+      ecsConfig: input.ecsConfig,
+      awsConfig: input.awsConfig,
+      updatedAt: input.now,
+    },
   };
 }
 

@@ -19,15 +19,26 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, pattern } = body;
 
-    if (!name || !pattern) {
+    if (typeof name !== "string" || typeof pattern !== "string") {
       return NextResponse.json(
-        { error: "name and pattern are required" },
+        { error: "name and pattern are required strings" },
         { status: 400 }
       );
     }
 
-    const filter = await fu.createFilter(name, pattern);
-    return NextResponse.json({ filter }, { status: 201 });
+    const result = await fu.createFilter({ name, pattern });
+    switch (result.type) {
+      case "Created":
+        return NextResponse.json(
+          { filter: result.filter },
+          { status: 201 }
+        );
+      case "Invalid":
+        return NextResponse.json(
+          { error: "Validation failed", details: result.errors },
+          { status: 400 }
+        );
+    }
   } catch (error) {
     console.error("Error creating filter:", error);
     return NextResponse.json(

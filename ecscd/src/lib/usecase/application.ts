@@ -1,5 +1,6 @@
 import {
   ApplicationDomain,
+  ApplicationValidationError,
   AwsAccessProfile,
   EcsServiceTarget,
   GitTaskDefinitionSource,
@@ -19,7 +20,8 @@ export interface CreateApplicationCommand {
 
 export type CreateApplicationResult =
   | { type: "Created"; application: ApplicationDomain }
-  | { type: "AlreadyExists"; name: string };
+  | { type: "AlreadyExists"; name: string }
+  | { type: "Invalid"; errors: ApplicationValidationError[] };
 
 export interface UpdateApplicationSettingsCommand {
   name: string;
@@ -30,7 +32,8 @@ export interface UpdateApplicationSettingsCommand {
 
 export type UpdateApplicationResult =
   | { type: "Updated"; application: ApplicationDomain }
-  | { type: "NotFound"; name: string };
+  | { type: "NotFound"; name: string }
+  | { type: "Invalid"; errors: ApplicationValidationError[] };
 
 export type DeleteApplicationResult =
   | { type: "Deleted"; name: string }
@@ -79,21 +82,24 @@ export class ApplicationUsecase implements IApplicationUsecase {
   async createApplication(
     command: CreateApplicationCommand,
   ): Promise<CreateApplicationResult> {
-    const existing = await this.applicationRepository.getApplication(
-      command.name,
-    );
-    if (existing) {
-      return { type: "AlreadyExists", name: command.name };
-    }
-    const application = createApplicationDomain({
+    const validation = createApplicationDomain({
       name: command.name,
       gitConfig: command.gitConfig,
       ecsConfig: command.ecsConfig,
       awsConfig: command.awsConfig,
       now: new Date(),
     });
-    await this.applicationRepository.createApplication(application);
-    return { type: "Created", application };
+    if (!validation.ok) {
+      return { type: "Invalid", errors: validation.errors };
+    }
+    const existing = await this.applicationRepository.getApplication(
+      command.name,
+    );
+    if (existing) {
+      return { type: "AlreadyExists", name: command.name };
+    }
+    await this.applicationRepository.createApplication(validation.application);
+    return { type: "Created", application: validation.application };
   }
 
   async updateApplicationSettings(
@@ -105,14 +111,17 @@ export class ApplicationUsecase implements IApplicationUsecase {
     if (!existing) {
       return { type: "NotFound", name: command.name };
     }
-    const updated = updateApplicationSettings(existing, {
+    const validation = updateApplicationSettings(existing, {
       gitConfig: command.gitConfig,
       ecsConfig: command.ecsConfig,
       awsConfig: command.awsConfig,
       now: new Date(),
     });
-    await this.applicationRepository.updateApplication(updated);
-    return { type: "Updated", application: updated };
+    if (!validation.ok) {
+      return { type: "Invalid", errors: validation.errors };
+    }
+    await this.applicationRepository.updateApplication(validation.application);
+    return { type: "Updated", application: validation.application };
   }
 
   async deleteApplication(name: string): Promise<DeleteApplicationResult> {

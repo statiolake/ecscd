@@ -68,6 +68,11 @@ export async function POST(request: NextRequest) {
           { error: "Application with this name already exists" },
           { status: 409 },
         );
+      case "Invalid":
+        return NextResponse.json(
+          { error: "Validation failed", details: result.errors },
+          { status: 400 },
+        );
     }
   } catch (error) {
     console.error("Error creating application:", error);

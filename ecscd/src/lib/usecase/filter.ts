@@ -1,15 +1,25 @@
 import {
   FilterDomain,
+  FilterValidationError,
   create as createFilterDomain,
 } from "../domain/filter";
+import { FilterRepository } from "../repository/filter";
 import { Clock } from "./port/clock";
 import { IdGenerator } from "./port/id-generator";
-import { FilterRepository } from "../repository/filter";
+
+export interface CreateFilterCommand {
+  name: string;
+  pattern: string;
+}
+
+export type CreateFilterResult =
+  | { type: "Created"; filter: FilterDomain }
+  | { type: "Invalid"; errors: FilterValidationError[] };
 
 export interface IFilterUsecase {
   getFilters(): Promise<FilterDomain[]>;
   getFilterById(id: string): Promise<FilterDomain | null>;
-  createFilter(name: string, pattern: string): Promise<FilterDomain>;
+  createFilter(command: CreateFilterCommand): Promise<CreateFilterResult>;
   deleteFilter(id: string): Promise<void>;
 }
 
@@ -28,16 +38,18 @@ export class FilterUsecase implements IFilterUsecase {
     return this.filterRepository.getFilterById(id);
   }
 
-  async createFilter(name: string, pattern: string): Promise<FilterDomain> {
-    const filter = createFilterDomain({
+  async createFilter(command: CreateFilterCommand): Promise<CreateFilterResult> {
+    const validation = createFilterDomain({
       id: this.idGenerator.nextId(),
-      name,
-      pattern,
+      name: command.name,
+      pattern: command.pattern,
       now: this.clock.now(),
     });
-
-    await this.filterRepository.createFilter(filter);
-    return filter;
+    if (!validation.ok) {
+      return { type: "Invalid", errors: validation.errors };
+    }
+    await this.filterRepository.createFilter(validation.filter);
+    return { type: "Created", filter: validation.filter };
   }
 
   async deleteFilter(id: string): Promise<void> {
