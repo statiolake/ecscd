@@ -45,16 +45,14 @@ function toEcsServiceStatus(status: string | undefined): EcsServiceStatus {
   if (status === "ACTIVE" || status === "DRAINING" || status === "INACTIVE") {
     return status;
   }
-
-  return "INACTIVE";
+  return "Unknown";
 }
 
 function toEcsDeploymentStatus(status: string | undefined): EcsDeploymentStatus {
   if (status === "PRIMARY" || status === "ACTIVE" || status === "INACTIVE") {
     return status;
   }
-
-  return "INACTIVE";
+  return "Unknown";
 }
 
 function toEcsRolloutState(status: string | undefined): EcsRolloutState {
@@ -65,8 +63,7 @@ function toEcsRolloutState(status: string | undefined): EcsRolloutState {
   ) {
     return status;
   }
-
-  return "FAILED";
+  return "Unknown";
 }
 
 function toRegisterTaskDefinitionInput(

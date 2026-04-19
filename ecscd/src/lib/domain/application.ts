@@ -1,8 +1,20 @@
 export type ApplicationSyncStatus = "InSync" | "OutOfSync";
 export type ResourceStatus = "Loading" | "Success" | "Error";
-export type EcsServiceStatus = "ACTIVE" | "DRAINING" | "INACTIVE";
-export type EcsDeploymentStatus = "PRIMARY" | "ACTIVE" | "INACTIVE";
-export type EcsRolloutState = "COMPLETED" | "FAILED" | "IN_PROGRESS";
+export type EcsServiceStatus =
+  | "ACTIVE"
+  | "DRAINING"
+  | "INACTIVE"
+  | "Unknown";
+export type EcsDeploymentStatus =
+  | "PRIMARY"
+  | "ACTIVE"
+  | "INACTIVE"
+  | "Unknown";
+export type EcsRolloutState =
+  | "COMPLETED"
+  | "FAILED"
+  | "IN_PROGRESS"
+  | "Unknown";
 
 export type ApplicationStatus =
   | "Loading"

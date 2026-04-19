@@ -2,8 +2,8 @@ import {
   FilterDomain,
   create as createFilterDomain,
 } from "../domain/filter";
-import { Clock } from "../infrastructure/interface/clock";
-import { IdGenerator } from "../infrastructure/interface/id-generator";
+import { Clock } from "./port/clock";
+import { IdGenerator } from "./port/id-generator";
 import { FilterRepository } from "../repository/filter";
 
 export interface IFilterUsecase {

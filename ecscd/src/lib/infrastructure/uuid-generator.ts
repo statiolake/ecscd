@@ -1,4 +1,4 @@
-import { IdGenerator } from "./interface/id-generator";
+import { IdGenerator } from "../usecase/port/id-generator";
 
 export class UuidGenerator implements IdGenerator {
   nextId(): string {

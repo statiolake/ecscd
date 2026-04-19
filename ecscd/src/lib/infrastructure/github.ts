@@ -6,6 +6,9 @@ import {
 } from "./interface/github";
 import { toDesiredTaskDefinitionSpec } from "./task-definition-normalizer";
 
+const GITHUB_REPO_URL_REGEX =
+  /github\.com\/([^/\s]+)\/([^/\s.]+?)(?:\.git)?\/?$/;
+
 export class GitHub implements IGithub {
   private octokit: Octokit;
 
@@ -19,7 +22,7 @@ export class GitHub implements IGithub {
     source: GitTaskDefinitionSource
   ): Promise<GitTaskDefinitionResult> {
     const repoUrl = source.repo || "";
-    const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)(\.git)?$/);
+    const match = repoUrl.match(GITHUB_REPO_URL_REGEX);
     if (!match) {
       return {
         status: "Error",
@@ -29,7 +32,7 @@ export class GitHub implements IGithub {
     const owner = match[1];
     const repo = match[2];
     const path = source.path || "";
-    const branch = source.branch || "";
+    const branch = source.branch || "main";
 
     let latestSha: string;
     try {
@@ -42,6 +45,12 @@ export class GitHub implements IGithub {
       }
       latestSha = sha;
     } catch (error) {
+      if (isOctokitStatus(error, 404)) {
+        return {
+          status: "Error",
+          error: { type: "CommitNotFound", branch },
+        };
+      }
       return toFetchError(error);
     }
 
@@ -54,6 +63,12 @@ export class GitHub implements IGithub {
         ref: latestSha,
       });
     } catch (error) {
+      if (isOctokitStatus(error, 404)) {
+        return {
+          status: "Error",
+          error: { type: "FileNotFound", path },
+        };
+      }
       return toFetchError(error);
     }
 
@@ -83,7 +98,7 @@ export class GitHub implements IGithub {
     const response = await this.octokit.rest.repos.listCommits({
       owner,
       repo,
-      sha: branch || "main",
+      sha: branch,
       per_page: 1,
     });
     if (response.data.length === 0) {
@@ -134,4 +149,13 @@ function toFetchError(error: unknown): GitTaskDefinitionResult {
       reason: error instanceof Error ? error.message : "Unknown fetch error",
     },
   };
+}
+
+function isOctokitStatus(error: unknown, status: number): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    (error as { status?: unknown }).status === status
+  );
 }
